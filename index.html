@@ -247,7 +247,10 @@
         .num-btn.disabled { opacity: 0.5; pointer-events: none; }
 
     </style>
+<link rel="manifest" href="manifest.webmanifest">
 <meta name="theme-color" content="#0072e3">
+<link rel="icon" href="icon.png" sizes="2048x2048">
+<link rel="apple-touch-icon" href="icon.png" sizes="2048x2048">
 <meta name="apple-mobile-web-app-capable" content="yes">
 </head>
 <body>
@@ -541,14 +544,12 @@
         });
 
         initGame();
-    
 
-if ('serviceWorker' in navigator) {
-    // 註解掉以避免找不到檔案的錯誤
-    // window.addEventListener('load', () => {
-    //     navigator.serviceWorker.register('./sw.js');
-    // });
-}
+        if ('serviceWorker' in navigator) {
+            window.addEventListener('load', () => {
+                navigator.serviceWorker.register('./sw.js');
+            });
+        }
 </script>
 </body>
 </html>
