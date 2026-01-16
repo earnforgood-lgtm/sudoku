@@ -16,6 +16,7 @@
             --text-color: #344861;
             --filled-color: #0072e3;
             --fixed-color: #000;
+            --thin-border: #c6d2df; /* 新增細線變數 */
         }
 
         body {
@@ -51,7 +52,6 @@
             font-weight: bold;
             color: #555;
         }
-        /* 當錯誤達到2次時，變紅色警示 */
         .mistake-counter.warning { color: #e74c3c; }
 
         .timer { font-size: 20px; font-weight: bold; font-variant-numeric: tabular-nums; }
@@ -82,21 +82,74 @@
             color: #555;
         }
 
-        /* 數獨棋盤 */
+        /* ========================================= */
+        /* --- 修正後的網格樣式 (Grid & Cells) --- */
+        /* ========================================= */
+
+        /* 數獨棋盤容器 */
         #sudoku-board {
             display: grid;
             grid-template-columns: repeat(9, 1fr);
             width: 90vw;
             max-width: 450px;
-            height: 90vw;
-            max-height: 450px;
-            background-color: var(--line-color);
-            gap: 1px;
-            border: 2px solid var(--line-color);
+            /* 使用 aspect-ratio 確保它是完美的正方形 */
+            aspect-ratio: 1 / 1; 
+            /* 移除舊的高度設定 */
+            /* height: 90vw; max-height: 450px; */
+            
+            background-color: var(--board-bg); /* 背景改為白色 */
+            gap: 0; /* 關鍵：間距設為0，由 cell 的 border 來控制線條 */
+            
+            /* 外框設定粗一點，更有層次感 */
+            border: 3px solid var(--line-color); 
             box-shadow: 0 4px 12px rgba(0,0,0,0.1);
             margin-bottom: 20px;
             position: relative;
+            box-sizing: border-box; /* 確保邊框包含在寬度內 */
         }
+
+        /* 單元格基礎樣式 */
+        .cell {
+            background-color: var(--board-bg);
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            font-size: 24px;
+            font-weight: 500;
+            color: var(--fixed-color);
+            cursor: pointer;
+            
+            /* 核心修改：每個格子預設只有右邊和下面有「細灰線」 */
+            border-right: 1px solid var(--thin-border);
+            border-bottom: 1px solid var(--thin-border);
+            /* 移除原本的 border: 1px solid #c6d2df; 避免四邊重複 */
+            
+            box-sizing: border-box; /* 重要：讓邊框計算在內，對齊才準 */
+        }
+
+        /* 邊界清理：最右側和最下方的格子不需要邊框 (因為有容器外框了) */
+        /* 每行第 9 個格子 (最右側) */
+        .cell:nth-child(9n) {
+            border-right: none;
+        }
+        /* 最後一列的格子 (第 73 到 81 個) */
+        .cell:nth-child(n+73) {
+            border-bottom: none;
+        }
+
+        /* 3x3 粗線條處理 (搭配 JS 添加的 class) */
+        /* 使用 3px 寬度並加上 !important 以確保覆蓋掉預設的細線 */
+        .cell.border-right {
+            border-right: 3px solid var(--line-color) !important;
+        }
+        .cell.border-bottom {
+            border-bottom: 3px solid var(--line-color) !important;
+        }
+
+        /* ========================================= */
+        /* --- 網格樣式修正結束 --- */
+        /* ========================================= */
+
 
         /* Game Over 遮罩 */
         #game-over-overlay {
@@ -119,27 +172,6 @@
             cursor: pointer;
             font-size: 16px;
         }
-
-        .cell {
-            background-color: var(--board-bg);
-            display: flex;
-            justify-content: center;
-            align-items: center;
-            font-size: 24px;
-            font-weight: 500;
-            color: var(--fixed-color);
-            cursor: pointer;
-        }
-
-        .cell:nth-child(3n) { border-right: 2px solid var(--line-color); }
-        .cell:nth-child(9n) { border-right: none; }
-        .cell:nth-child(n+19):nth-child(-n+27),
-        .cell:nth-child(n+46):nth-child(-n+54) { border-bottom: 2px solid var(--line-color); }
-        
-        #sudoku-board { gap: 0; }
-        .cell { border: 1px solid #c6d2df; }
-        .cell.border-right { border-right: 2px solid var(--line-color); }
-        .cell.border-bottom { border-bottom: 2px solid var(--line-color); }
 
         .cell.selected { background-color: var(--selected-color) !important; }
         .cell.same-number { background-color: var(--same-num-color) !important; }
@@ -215,10 +247,7 @@
         .num-btn.disabled { opacity: 0.5; pointer-events: none; }
 
     </style>
-<link rel="manifest" href="manifest.webmanifest">
 <meta name="theme-color" content="#0072e3">
-<link rel="icon" href="icon.png" sizes="2048x2048">
-<link rel="apple-touch-icon" href="icon.png" sizes="2048x2048">
 <meta name="apple-mobile-web-app-capable" content="yes">
 </head>
 <body>
@@ -374,6 +403,8 @@
             board.forEach((num, index) => {
                 const cell = document.createElement('div');
                 cell.classList.add('cell');
+                
+                // JS 的邏輯是正確的，我們現在在 CSS 中正確地利用這些 class
                 const col = index % 9;
                 const row = Math.floor(index / 9);
                 if (col === 2 || col === 5) cell.classList.add('border-right');
@@ -397,13 +428,6 @@
         function selectCell(index) {
             if (isGameOver) return;
             selectedCellIndex = index;
-            const cells = document.querySelectorAll('.cell');
-            // 注意：querySelectorAll 會抓到包含 overlay 的元素，所以要小心 index 對應
-            // 這裡 cells 包含了非 .cell 的元素嗎？不，用 .cell 選擇器很安全
-            // 但是因為 appendChild 順序，overlay 是第一個 child 嗎？
-            // 為了安全，我們在 render 時要注意 overlay 的位置
-            
-            // 簡單處理：重新抓取所有 .cell
             const cellDivs = Array.from(document.querySelectorAll('.cell'));
             
             const selectedVal = board[index];
@@ -520,9 +544,10 @@
     
 
 if ('serviceWorker' in navigator) {
-    window.addEventListener('load', () => {
-        navigator.serviceWorker.register('./sw.js');
-    });
+    // 註解掉以避免找不到檔案的錯誤
+    // window.addEventListener('load', () => {
+    //     navigator.serviceWorker.register('./sw.js');
+    // });
 }
 </script>
 </body>
