@@ -1,0 +1,529 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>嚴格數獨 (Sudoku Strict)</title>
+    <style>
+        :root {
+            --bg-color: #f0f2f5;
+            --board-bg: #fff;
+            --line-color: #344861;
+            --highlight-color: #e2ebf3;
+            --selected-color: #bbdefb;
+            --same-num-color: #cbf0f8;
+            --error-color: #f7cfd6;
+            --text-color: #344861;
+            --filled-color: #0072e3;
+            --fixed-color: #000;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+            background-color: var(--bg-color);
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            min-height: 100vh;
+            margin: 0;
+            user-select: none;
+        }
+
+        /* 頂部資訊列 */
+        .top-bar {
+            width: 90vw;
+            max-width: 450px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 10px;
+            color: var(--text-color);
+        }
+        
+        .info-group {
+            display: flex;
+            gap: 15px;
+            align-items: center;
+        }
+
+        .mistake-counter {
+            font-weight: bold;
+            color: #555;
+        }
+        /* 當錯誤達到2次時，變紅色警示 */
+        .mistake-counter.warning { color: #e74c3c; }
+
+        .timer { font-size: 20px; font-weight: bold; font-variant-numeric: tabular-nums; }
+
+        /* 難度與種子 */
+        .sub-bar {
+            width: 90vw;
+            max-width: 450px;
+            display: flex;
+            justify-content: space-between;
+            margin-bottom: 15px;
+            align-items: center;
+        }
+
+        .seed-display {
+            font-size: 12px;
+            color: #888;
+            cursor: pointer;
+            text-decoration: underline;
+        }
+
+        .difficulty-pill {
+            background: #e2e6ea;
+            padding: 4px 12px;
+            border-radius: 12px;
+            font-size: 14px;
+            font-weight: bold;
+            color: #555;
+        }
+
+        /* 數獨棋盤 */
+        #sudoku-board {
+            display: grid;
+            grid-template-columns: repeat(9, 1fr);
+            width: 90vw;
+            max-width: 450px;
+            height: 90vw;
+            max-height: 450px;
+            background-color: var(--line-color);
+            gap: 1px;
+            border: 2px solid var(--line-color);
+            box-shadow: 0 4px 12px rgba(0,0,0,0.1);
+            margin-bottom: 20px;
+            position: relative;
+        }
+
+        /* Game Over 遮罩 */
+        #game-over-overlay {
+            position: absolute;
+            top: 0; left: 0; width: 100%; height: 100%;
+            background: rgba(255, 255, 255, 0.85);
+            display: none;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            z-index: 10;
+        }
+        #game-over-overlay h2 { margin: 0 0 10px 0; color: #e74c3c; }
+        #game-over-overlay button {
+            padding: 10px 20px;
+            background: var(--filled-color);
+            color: white;
+            border: none;
+            border-radius: 5px;
+            cursor: pointer;
+            font-size: 16px;
+        }
+
+        .cell {
+            background-color: var(--board-bg);
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            font-size: 24px;
+            font-weight: 500;
+            color: var(--fixed-color);
+            cursor: pointer;
+        }
+
+        .cell:nth-child(3n) { border-right: 2px solid var(--line-color); }
+        .cell:nth-child(9n) { border-right: none; }
+        .cell:nth-child(n+19):nth-child(-n+27),
+        .cell:nth-child(n+46):nth-child(-n+54) { border-bottom: 2px solid var(--line-color); }
+        
+        #sudoku-board { gap: 0; }
+        .cell { border: 1px solid #c6d2df; }
+        .cell.border-right { border-right: 2px solid var(--line-color); }
+        .cell.border-bottom { border-bottom: 2px solid var(--line-color); }
+
+        .cell.selected { background-color: var(--selected-color) !important; }
+        .cell.same-number { background-color: var(--same-num-color) !important; }
+        .cell.highlight { background-color: var(--highlight-color); }
+        
+        /* 錯誤樣式 */
+        .cell.error { background-color: var(--error-color) !important; color: #e74c3c !important; }
+        /* 錯誤時的搖晃動畫 */
+        @keyframes shake {
+            0% { transform: translate(1px, 1px) rotate(0deg); }
+            10% { transform: translate(-1px, -2px) rotate(-1deg); }
+            20% { transform: translate(-3px, 0px) rotate(1deg); }
+            30% { transform: translate(3px, 2px) rotate(0deg); }
+            40% { transform: translate(1px, -1px) rotate(1deg); }
+            50% { transform: translate(-1px, 2px) rotate(-1deg); }
+            60% { transform: translate(-3px, 1px) rotate(0deg); }
+            100% { transform: translate(0, 0) rotate(0deg); }
+        }
+        .shake-animation {
+            animation: shake 0.5s;
+        }
+
+        .cell.fixed { font-weight: bold; }
+        .cell.user-input { color: var(--filled-color); }
+
+        /* 功能按鈕 */
+        .game-actions {
+            width: 90vw;
+            max-width: 450px;
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 10px;
+            margin-bottom: 15px;
+        }
+
+        .action-btn {
+            padding: 10px;
+            border: 1px solid var(--filled-color);
+            border-radius: 8px;
+            font-size: 14px;
+            cursor: pointer;
+            font-weight: bold;
+            color: var(--filled-color);
+            background-color: #fff;
+        }
+        .action-btn:hover { background-color: #f0f7ff; }
+        .btn-new { background-color: var(--filled-color); color: white; }
+        .btn-new:hover { background-color: #005bb5; }
+
+        /* 數字鍵盤 */
+        .numpad {
+            display: grid;
+            grid-template-columns: repeat(5, 1fr);
+            gap: 8px;
+            width: 90vw;
+            max-width: 450px;
+        }
+
+        .num-btn {
+            background-color: white;
+            border: 1px solid #c6d2df;
+            border-radius: 8px;
+            height: 48px;
+            font-size: 22px;
+            color: var(--filled-color);
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            cursor: pointer;
+            box-shadow: 0 2px 0 #dce3eb;
+        }
+        .num-btn:active { transform: translateY(2px); box-shadow: none; }
+        .num-btn.disabled { opacity: 0.5; pointer-events: none; }
+
+    </style>
+<link rel="manifest" href="manifest.webmanifest">
+<meta name="theme-color" content="#0072e3">
+<link rel="icon" href="icon.png" sizes="2048x2048">
+<link rel="apple-touch-icon" href="icon.png" sizes="2048x2048">
+<meta name="apple-mobile-web-app-capable" content="yes">
+</head>
+<body>
+
+    <div class="top-bar">
+        <div class="info-group">
+            <span class="difficulty-pill" id="diff-display">普通</span>
+        </div>
+        <div class="info-group">
+            <div class="mistake-counter" id="mistake-display">錯誤: 0/3</div>
+            <div class="timer" id="timer">00:00</div>
+        </div>
+    </div>
+    
+    <div class="sub-bar">
+        <span class="seed-display" onclick="copySeed()" id="seed-label">Seed: #----</span>
+    </div>
+
+    <div id="sudoku-board">
+        <div id="game-over-overlay">
+            <h2>遊戲結束</h2>
+            <p>錯誤次數過多！</p>
+            <button onclick="initGame()">再試一次</button>
+        </div>
+    </div>
+
+    <div class="game-actions">
+        <button class="action-btn" onclick="promptSeed()">✎ 輸入種子對戰</button>
+        <button class="action-btn btn-new" onclick="initGame()">+ 新遊戲</button>
+    </div>
+
+    <div class="numpad" id="numpad">
+        <div class="num-btn" onclick="fillNumber(1)">1</div>
+        <div class="num-btn" onclick="fillNumber(2)">2</div>
+        <div class="num-btn" onclick="fillNumber(3)">3</div>
+        <div class="num-btn" onclick="fillNumber(4)">4</div>
+        <div class="num-btn" onclick="fillNumber(5)">5</div>
+        <div class="num-btn" onclick="fillNumber(6)">6</div>
+        <div class="num-btn" onclick="fillNumber(7)">7</div>
+        <div class="num-btn" onclick="fillNumber(8)">8</div>
+        <div class="num-btn" onclick="fillNumber(9)">9</div>
+        <div class="num-btn" onclick="fillNumber('X')" style="color: #e74c3c;">✕</div>
+    </div>
+
+    <script>
+        // 變數
+        let board = [];
+        let solution = [];
+        let fixedMask = [];
+        let selectedCellIndex = null;
+        let timerInterval;
+        let seconds = 0;
+        let currentSeed = 0; 
+        let rngState = 0;
+        
+        // --- 新增：錯誤處置變數 ---
+        let mistakes = 0;
+        const MAX_MISTAKES = 3;
+        let isGameOver = false;
+
+        const DIFFICULTY_HOLES = 40; // 預設普通難度
+
+        // RNG
+        function seedRandom(seed) { rngState = seed; }
+        function myRandom() {
+            rngState = (rngState * 9301 + 49297) % 233280;
+            return rngState / 233280.0;
+        }
+
+        // 初始化
+        function initGame(seedInput = null) {
+            // 重置錯誤計數
+            mistakes = 0;
+            isGameOver = false;
+            updateMistakeUI();
+            document.getElementById('game-over-overlay').style.display = 'none';
+            document.getElementById('numpad').style.opacity = '1';
+            document.getElementById('numpad').style.pointerEvents = 'auto';
+
+            if (seedInput !== null) {
+                currentSeed = parseInt(seedInput);
+            } else {
+                currentSeed = Math.floor(Math.random() * 99999) + 1;
+            }
+            seedRandom(currentSeed);
+            document.getElementById('seed-label').innerText = `Seed: #${currentSeed} (點擊複製)`;
+
+            startTimer();
+            generateBoard();
+            renderBoard();
+            selectedCellIndex = null;
+        }
+
+        // 生成邏輯 (省略 shuffleArray 等輔助函式，與前版相同)
+        function shuffleArray(array) {
+            for (let i = array.length - 1; i > 0; i--) {
+                const j = Math.floor(myRandom() * (i + 1));
+                [array[i], array[j]] = [array[j], array[i]];
+            }
+        }
+        function generateBoard() {
+            solution = Array.from({ length: 81 }, () => 0);
+            fillBoardRecursively(solution);
+            board = [...solution];
+            fixedMask = Array.from({ length: 81 }, () => true);
+            let indices = Array.from({length: 81}, (_, i) => i);
+            shuffleArray(indices);
+            let holes = DIFFICULTY_HOLES;
+            for (let i = 0; i < 81 && holes > 0; i++) {
+                let idx = indices[i];
+                if (board[idx] !== 0) {
+                    board[idx] = 0;
+                    fixedMask[idx] = false;
+                    holes--;
+                }
+            }
+        }
+        function fillBoardRecursively(grid) {
+            let emptyIndex = grid.indexOf(0);
+            if (emptyIndex === -1) return true;
+            let row = Math.floor(emptyIndex / 9);
+            let col = emptyIndex % 9;
+            let nums = [1, 2, 3, 4, 5, 6, 7, 8, 9];
+            shuffleArray(nums);
+            for (let num of nums) {
+                if (isValid(grid, row, col, num)) {
+                    grid[emptyIndex] = num;
+                    if (fillBoardRecursively(grid)) return true;
+                    grid[emptyIndex] = 0;
+                }
+            }
+            return false;
+        }
+        function isValid(grid, row, col, num) {
+            for (let i = 0; i < 9; i++) {
+                if (grid[row * 9 + i] === num) return false;
+                if (grid[i * 9 + col] === num) return false;
+                let boxRow = 3 * Math.floor(row / 3) + Math.floor(i / 3);
+                let boxCol = 3 * Math.floor(col / 3) + (i % 3);
+                if (grid[boxRow * 9 + boxCol] === num) return false;
+            }
+            return true;
+        }
+
+        // 渲染
+        function renderBoard() {
+            const container = document.getElementById('sudoku-board');
+            // 清空時保留 overlay
+            const overlay = document.getElementById('game-over-overlay');
+            container.innerHTML = '';
+            container.appendChild(overlay);
+
+            board.forEach((num, index) => {
+                const cell = document.createElement('div');
+                cell.classList.add('cell');
+                const col = index % 9;
+                const row = Math.floor(index / 9);
+                if (col === 2 || col === 5) cell.classList.add('border-right');
+                if (row === 2 || row === 5) cell.classList.add('border-bottom');
+
+                if (num !== 0 && fixedMask[index]) {
+                    cell.textContent = num;
+                    cell.classList.add('fixed');
+                } else if (num !== 0) {
+                    cell.textContent = num;
+                    cell.classList.add('user-input');
+                    // 如果是用戶填的，檢查是否與解答不符 (即使沒開啟錯誤顯示，這裡記錄狀態)
+                    if (num !== solution[index]) cell.classList.add('error');
+                }
+                
+                cell.onclick = () => selectCell(index);
+                container.appendChild(cell);
+            });
+        }
+
+        function selectCell(index) {
+            if (isGameOver) return;
+            selectedCellIndex = index;
+            const cells = document.querySelectorAll('.cell');
+            // 注意：querySelectorAll 會抓到包含 overlay 的元素，所以要小心 index 對應
+            // 這裡 cells 包含了非 .cell 的元素嗎？不，用 .cell 選擇器很安全
+            // 但是因為 appendChild 順序，overlay 是第一個 child 嗎？
+            // 為了安全，我們在 render 時要注意 overlay 的位置
+            
+            // 簡單處理：重新抓取所有 .cell
+            const cellDivs = Array.from(document.querySelectorAll('.cell'));
+            
+            const selectedVal = board[index];
+            cellDivs.forEach(c => c.classList.remove('selected', 'highlight', 'same-number'));
+            
+            cellDivs[index].classList.add('selected');
+            
+            const row = Math.floor(index / 9);
+            const col = index % 9;
+            cellDivs.forEach((c, i) => {
+                const r = Math.floor(i / 9);
+                const c_idx = i % 9;
+                if (r === row || c_idx === col) c.classList.add('highlight');
+                if (selectedVal !== 0 && board[i] === selectedVal) c.classList.add('same-number');
+            });
+        }
+
+        // --- 核心邏輯修改：填數字與錯誤懲罰 ---
+        function fillNumber(num) {
+            if (isGameOver || selectedCellIndex === null || fixedMask[selectedCellIndex]) return;
+            
+            const cellDivs = document.querySelectorAll('.cell');
+            const currentCell = cellDivs[selectedCellIndex];
+
+            // 1. 清除功能
+            if (num === 'X') {
+                board[selectedCellIndex] = 0;
+                renderBoard();
+                selectCell(selectedCellIndex);
+                return;
+            }
+
+            // 2. 驗證是否正確 (防暴力破解的核心)
+            if (num !== solution[selectedCellIndex]) {
+                // A. 答錯了！
+                mistakes++;
+                updateMistakeUI();
+                
+                // 視覺懲罰：格子變紅並搖晃
+                currentCell.textContent = num;
+                currentCell.classList.add('error', 'shake-animation');
+                
+                // 延遲一下清除錯誤數字 (可選，這裡選擇保留紅色數字讓玩家知道錯哪)
+                // 這裡選擇不存入 board，或者存入 board 但標記錯誤
+                // 為了方便，我們暫時顯示錯誤數字
+                board[selectedCellIndex] = num;
+                renderBoard();
+                
+                // 重新選取以顯示高亮
+                selectCell(selectedCellIndex);
+                
+                // 檢查是否 Game Over
+                if (mistakes >= MAX_MISTAKES) {
+                    triggerGameOver();
+                }
+            } else {
+                // B. 答對了
+                board[selectedCellIndex] = num;
+                renderBoard();
+                selectCell(selectedCellIndex);
+                checkWin();
+            }
+        }
+
+        function updateMistakeUI() {
+            const el = document.getElementById('mistake-display');
+            el.innerText = `錯誤: ${mistakes}/${MAX_MISTAKES}`;
+            if (mistakes >= 2) el.classList.add('warning');
+            else el.classList.remove('warning');
+        }
+
+        function triggerGameOver() {
+            isGameOver = true;
+            clearInterval(timerInterval);
+            document.getElementById('game-over-overlay').style.display = 'flex';
+            document.getElementById('numpad').style.opacity = '0.3';
+            document.getElementById('numpad').style.pointerEvents = 'none';
+        }
+
+        function startTimer() {
+            clearInterval(timerInterval);
+            seconds = 0;
+            document.getElementById('timer').innerText = "00:00";
+            timerInterval = setInterval(() => {
+                seconds++;
+                let m = Math.floor(seconds / 60).toString().padStart(2, '0');
+                let s = (seconds % 60).toString().padStart(2, '0');
+                document.getElementById('timer').innerText = `${m}:${s}`;
+            }, 1000);
+        }
+
+        function checkWin() {
+            if (!board.includes(0) && board.every((val, i) => val === solution[i])) {
+                clearInterval(timerInterval);
+                setTimeout(() => alert(`恭喜完成！用時：${document.getElementById('timer').innerText}`), 100);
+            }
+        }
+
+        function promptSeed() {
+            const input = prompt("輸入種子碼:");
+            if (input) initGame(input);
+        }
+        function copySeed() {
+            navigator.clipboard.writeText(currentSeed);
+            alert("種子碼已複製");
+        }
+        document.addEventListener('keydown', (e) => {
+            if (selectedCellIndex === null) return;
+            if (e.key >= '1' && e.key <= '9') fillNumber(parseInt(e.key));
+            if (e.key === 'Backspace') fillNumber('X');
+        });
+
+        initGame();
+    
+
+if ('serviceWorker' in navigator) {
+    window.addEventListener('load', () => {
+        navigator.serviceWorker.register('./sw.js');
+    });
+}
+</script>
+</body>
+</html>
