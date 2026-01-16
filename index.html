@@ -16,7 +16,7 @@
             --text-color: #344861;
             --filled-color: #0072e3;
             --fixed-color: #000;
-            --thin-border: #c6d2df; /* 新增細線變數 */
+            --thin-border: #c6d2df; 
         }
 
         body {
@@ -56,7 +56,38 @@
 
         .timer { font-size: 20px; font-weight: bold; font-variant-numeric: tabular-nums; }
 
-        /* 難度與種子 */
+        /* --- 新增：難度選擇列樣式 --- */
+        .difficulty-bar {
+            width: 90vw;
+            max-width: 450px;
+            margin-bottom: 10px;
+            display: flex;
+            gap: 5px;
+            background: #e2e6ea;
+            padding: 4px;
+            border-radius: 25px;
+        }
+
+        .diff-btn {
+            flex: 1;
+            padding: 6px 0;
+            text-align: center;
+            border: none;
+            background: transparent;
+            cursor: pointer;
+            border-radius: 20px;
+            font-size: 14px;
+            font-weight: 500;
+            color: #666;
+            transition: all 0.2s;
+        }
+
+        .diff-btn.active {
+            background-color: var(--filled-color);
+            color: white;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.2);
+        }
+
         .sub-bar {
             width: 90vw;
             max-width: 450px;
@@ -73,42 +104,23 @@
             text-decoration: underline;
         }
 
-        .difficulty-pill {
-            background: #e2e6ea;
-            padding: 4px 12px;
-            border-radius: 12px;
-            font-size: 14px;
-            font-weight: bold;
-            color: #555;
-        }
-
-        /* ========================================= */
-        /* --- 修正後的網格樣式 (Grid & Cells) --- */
-        /* ========================================= */
-
-        /* 數獨棋盤容器 */
+        /* 數獨棋盤容器 (保持優化後的樣式) */
         #sudoku-board {
             display: grid;
             grid-template-columns: repeat(9, 1fr);
             width: 90vw;
             max-width: 450px;
-            /* 使用 aspect-ratio 確保它是完美的正方形 */
             aspect-ratio: 1 / 1; 
-            /* 移除舊的高度設定 */
-            /* height: 90vw; max-height: 450px; */
-            
-            background-color: var(--board-bg); /* 背景改為白色 */
-            gap: 0; /* 關鍵：間距設為0，由 cell 的 border 來控制線條 */
-            
-            /* 外框設定粗一點，更有層次感 */
+            background-color: var(--board-bg);
+            gap: 0; 
             border: 3px solid var(--line-color); 
             box-shadow: 0 4px 12px rgba(0,0,0,0.1);
             margin-bottom: 20px;
             position: relative;
-            box-sizing: border-box; /* 確保邊框包含在寬度內 */
+            box-sizing: border-box;
         }
 
-        /* 單元格基礎樣式 */
+        /* 單元格樣式 (保持優化後的樣式) */
         .cell {
             background-color: var(--board-bg);
             display: flex;
@@ -118,38 +130,16 @@
             font-weight: 500;
             color: var(--fixed-color);
             cursor: pointer;
-            
-            /* 核心修改：每個格子預設只有右邊和下面有「細灰線」 */
             border-right: 1px solid var(--thin-border);
             border-bottom: 1px solid var(--thin-border);
-            /* 移除原本的 border: 1px solid #c6d2df; 避免四邊重複 */
-            
-            box-sizing: border-box; /* 重要：讓邊框計算在內，對齊才準 */
+            box-sizing: border-box;
         }
 
-        /* 邊界清理：最右側和最下方的格子不需要邊框 (因為有容器外框了) */
-        /* 每行第 9 個格子 (最右側) */
-        .cell:nth-child(9n) {
-            border-right: none;
-        }
-        /* 最後一列的格子 (第 73 到 81 個) */
-        .cell:nth-child(n+73) {
-            border-bottom: none;
-        }
+        .cell:nth-child(9n) { border-right: none; }
+        .cell:nth-child(n+73) { border-bottom: none; }
 
-        /* 3x3 粗線條處理 (搭配 JS 添加的 class) */
-        /* 使用 3px 寬度並加上 !important 以確保覆蓋掉預設的細線 */
-        .cell.border-right {
-            border-right: 3px solid var(--line-color) !important;
-        }
-        .cell.border-bottom {
-            border-bottom: 3px solid var(--line-color) !important;
-        }
-
-        /* ========================================= */
-        /* --- 網格樣式修正結束 --- */
-        /* ========================================= */
-
+        .cell.border-right { border-right: 3px solid var(--line-color) !important; }
+        .cell.border-bottom { border-bottom: 3px solid var(--line-color) !important; }
 
         /* Game Over 遮罩 */
         #game-over-overlay {
@@ -176,10 +166,8 @@
         .cell.selected { background-color: var(--selected-color) !important; }
         .cell.same-number { background-color: var(--same-num-color) !important; }
         .cell.highlight { background-color: var(--highlight-color); }
-        
-        /* 錯誤樣式 */
         .cell.error { background-color: var(--error-color) !important; color: #e74c3c !important; }
-        /* 錯誤時的搖晃動畫 */
+        
         @keyframes shake {
             0% { transform: translate(1px, 1px) rotate(0deg); }
             10% { transform: translate(-1px, -2px) rotate(-1deg); }
@@ -190,25 +178,23 @@
             60% { transform: translate(-3px, 1px) rotate(0deg); }
             100% { transform: translate(0, 0) rotate(0deg); }
         }
-        .shake-animation {
-            animation: shake 0.5s;
-        }
+        .shake-animation { animation: shake 0.5s; }
 
         .cell.fixed { font-weight: bold; }
         .cell.user-input { color: var(--filled-color); }
 
-        /* 功能按鈕 */
+        /* 功能按鈕區 (修改為3欄以容納重來按鈕) */
         .game-actions {
             width: 90vw;
             max-width: 450px;
             display: grid;
-            grid-template-columns: 1fr 1fr;
-            gap: 10px;
+            grid-template-columns: 1fr 1fr 1fr; /* 三個按鈕平分 */
+            gap: 8px;
             margin-bottom: 15px;
         }
 
         .action-btn {
-            padding: 10px;
+            padding: 10px 0; /* 調整內距以適應較小的按鈕 */
             border: 1px solid var(--filled-color);
             border-radius: 8px;
             font-size: 14px;
@@ -216,6 +202,9 @@
             font-weight: bold;
             color: var(--filled-color);
             background-color: #fff;
+            display: flex;
+            justify-content: center;
+            align-items: center;
         }
         .action-btn:hover { background-color: #f0f7ff; }
         .btn-new { background-color: var(--filled-color); color: white; }
@@ -255,9 +244,16 @@
 </head>
 <body>
 
+    <div class="difficulty-bar">
+        <div class="diff-btn" id="btn-easy" onclick="setDifficulty('easy')">簡單</div>
+        <div class="diff-btn active" id="btn-medium" onclick="setDifficulty('medium')">普通</div>
+        <div class="diff-btn" id="btn-hard" onclick="setDifficulty('hard')">困難</div>
+        <div class="diff-btn" id="btn-expert" onclick="setDifficulty('expert')">專家</div>
+    </div>
+
     <div class="top-bar">
         <div class="info-group">
-            <span class="difficulty-pill" id="diff-display">普通</span>
+            <span class="seed-display" onclick="copySeed()" id="seed-label">Seed: #----</span>
         </div>
         <div class="info-group">
             <div class="mistake-counter" id="mistake-display">錯誤: 0/3</div>
@@ -265,10 +261,6 @@
         </div>
     </div>
     
-    <div class="sub-bar">
-        <span class="seed-display" onclick="copySeed()" id="seed-label">Seed: #----</span>
-    </div>
-
     <div id="sudoku-board">
         <div id="game-over-overlay">
             <h2>遊戲結束</h2>
@@ -278,8 +270,9 @@
     </div>
 
     <div class="game-actions">
-        <button class="action-btn" onclick="promptSeed()">✎ 輸入種子對戰</button>
-        <button class="action-btn btn-new" onclick="initGame()">+ 新遊戲</button>
+        <button class="action-btn" onclick="resetCurrentGame()">↺ 重來</button>
+        <button class="action-btn" onclick="promptSeed()">✎ 種子</button>
+        <button class="action-btn btn-new" onclick="initGame()">+ 新局</button>
     </div>
 
     <div class="numpad" id="numpad">
@@ -306,12 +299,19 @@
         let currentSeed = 0; 
         let rngState = 0;
         
-        // --- 新增：錯誤處置變數 ---
+        // 錯誤處置變數
         let mistakes = 0;
         const MAX_MISTAKES = 3;
         let isGameOver = false;
 
-        const DIFFICULTY_HOLES = 40; // 預設普通難度
+        // 恢復：難度設定
+        let currentDifficulty = 'medium';
+        const DIFFICULTY_HOLES = {
+            'easy': 30, 
+            'medium': 40, 
+            'hard': 50, 
+            'expert': 58
+        };
 
         // RNG
         function seedRandom(seed) { rngState = seed; }
@@ -336,7 +336,7 @@
                 currentSeed = Math.floor(Math.random() * 99999) + 1;
             }
             seedRandom(currentSeed);
-            document.getElementById('seed-label').innerText = `Seed: #${currentSeed} (點擊複製)`;
+            document.getElementById('seed-label').innerText = `Seed: #${currentSeed}`;
 
             startTimer();
             generateBoard();
@@ -344,7 +344,40 @@
             selectedCellIndex = null;
         }
 
-        // 生成邏輯 (省略 shuffleArray 等輔助函式，與前版相同)
+        // 新增：設定難度
+        function setDifficulty(level) {
+            currentDifficulty = level;
+            // 更新按鈕樣式
+            document.querySelectorAll('.diff-btn').forEach(btn => btn.classList.remove('active'));
+            document.getElementById(`btn-${level}`).classList.add('active');
+            // 切換難度視為開新局
+            initGame();
+        }
+
+        // 新增：重置本局
+        function resetCurrentGame() {
+            if (!confirm('確定要清空當前進度並重來嗎？')) return;
+            
+            // 恢復錯誤計數
+            mistakes = 0;
+            updateMistakeUI();
+            
+            // 清空非題目格子
+            for (let i = 0; i < 81; i++) {
+                if (!fixedMask[i]) {
+                    board[i] = 0;
+                }
+            }
+            // 重置時間
+            startTimer();
+            renderBoard();
+            
+            if (selectedCellIndex !== null) {
+                selectCell(selectedCellIndex);
+            }
+        }
+
+        // 生成邏輯
         function shuffleArray(array) {
             for (let i = array.length - 1; i > 0; i--) {
                 const j = Math.floor(myRandom() * (i + 1));
@@ -358,7 +391,10 @@
             fixedMask = Array.from({ length: 81 }, () => true);
             let indices = Array.from({length: 81}, (_, i) => i);
             shuffleArray(indices);
-            let holes = DIFFICULTY_HOLES;
+            
+            // 修正：使用當前難度的挖洞數量
+            let holes = DIFFICULTY_HOLES[currentDifficulty];
+            
             for (let i = 0; i < 81 && holes > 0; i++) {
                 let idx = indices[i];
                 if (board[idx] !== 0) {
@@ -398,7 +434,6 @@
         // 渲染
         function renderBoard() {
             const container = document.getElementById('sudoku-board');
-            // 清空時保留 overlay
             const overlay = document.getElementById('game-over-overlay');
             container.innerHTML = '';
             container.appendChild(overlay);
@@ -407,9 +442,9 @@
                 const cell = document.createElement('div');
                 cell.classList.add('cell');
                 
-                // JS 的邏輯是正確的，我們現在在 CSS 中正確地利用這些 class
                 const col = index % 9;
                 const row = Math.floor(index / 9);
+                // 應用 3x3 粗線 class
                 if (col === 2 || col === 5) cell.classList.add('border-right');
                 if (row === 2 || row === 5) cell.classList.add('border-bottom');
 
@@ -419,7 +454,6 @@
                 } else if (num !== 0) {
                     cell.textContent = num;
                     cell.classList.add('user-input');
-                    // 如果是用戶填的，檢查是否與解答不符 (即使沒開啟錯誤顯示，這裡記錄狀態)
                     if (num !== solution[index]) cell.classList.add('error');
                 }
                 
@@ -431,6 +465,7 @@
         function selectCell(index) {
             if (isGameOver) return;
             selectedCellIndex = index;
+            // 正確選取所有 .cell 元素
             const cellDivs = Array.from(document.querySelectorAll('.cell'));
             
             const selectedVal = board[index];
@@ -448,14 +483,12 @@
             });
         }
 
-        // --- 核心邏輯修改：填數字與錯誤懲罰 ---
         function fillNumber(num) {
             if (isGameOver || selectedCellIndex === null || fixedMask[selectedCellIndex]) return;
             
             const cellDivs = document.querySelectorAll('.cell');
             const currentCell = cellDivs[selectedCellIndex];
 
-            // 1. 清除功能
             if (num === 'X') {
                 board[selectedCellIndex] = 0;
                 renderBoard();
@@ -463,31 +496,22 @@
                 return;
             }
 
-            // 2. 驗證是否正確 (防暴力破解的核心)
+            // 錯誤檢查邏輯
             if (num !== solution[selectedCellIndex]) {
-                // A. 答錯了！
                 mistakes++;
                 updateMistakeUI();
                 
-                // 視覺懲罰：格子變紅並搖晃
                 currentCell.textContent = num;
                 currentCell.classList.add('error', 'shake-animation');
                 
-                // 延遲一下清除錯誤數字 (可選，這裡選擇保留紅色數字讓玩家知道錯哪)
-                // 這裡選擇不存入 board，或者存入 board 但標記錯誤
-                // 為了方便，我們暫時顯示錯誤數字
                 board[selectedCellIndex] = num;
                 renderBoard();
-                
-                // 重新選取以顯示高亮
                 selectCell(selectedCellIndex);
                 
-                // 檢查是否 Game Over
                 if (mistakes >= MAX_MISTAKES) {
                     triggerGameOver();
                 }
             } else {
-                // B. 答對了
                 board[selectedCellIndex] = num;
                 renderBoard();
                 selectCell(selectedCellIndex);
@@ -545,6 +569,7 @@
 
         initGame();
 
+        // PWA Service Worker 註冊
         if ('serviceWorker' in navigator) {
             window.addEventListener('load', () => {
                 navigator.serviceWorker.register('./sw.js');
