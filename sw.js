@@ -1,7 +1,7 @@
 const CACHE_NAME = "sudoku-pwa-v2";
 const ASSETS = [
   "./",
-  "./math.html",
+  "./index.html",
   "./manifest.webmanifest",
   "./icon.png"
 ];
@@ -33,7 +33,7 @@ self.addEventListener("fetch", (event) => {
           caches.open(CACHE_NAME).then((cache) => cache.put(event.request, copy));
           return response;
         })
-        .catch(() => caches.match("./math.html"));
+        .catch(() => caches.match("./index.html"));
     })
   );
 });

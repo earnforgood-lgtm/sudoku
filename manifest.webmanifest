@@ -1,7 +1,7 @@
 ﻿{
   "name": "嚴格數獨 (Sudoku Strict)",
   "short_name": "嚴格數獨",
-  "start_url": "./math.html",
+  "start_url": "./index.html",
   "scope": "./",
   "display": "standalone",
   "background_color": "#f0f2f5",
