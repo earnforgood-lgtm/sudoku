@@ -111,8 +111,8 @@
             width: 90vw;
             max-width: 450px;
             aspect-ratio: 1 / 1; 
-            background-color: var(--board-bg);
-            gap: 0; 
+            background-color: var(--thin-border);
+            gap: 1px; 
             border: 3px solid var(--line-color); 
             box-shadow: 0 4px 12px rgba(0,0,0,0.1);
             margin-bottom: 20px;
@@ -130,16 +130,12 @@
             font-weight: 500;
             color: var(--fixed-color);
             cursor: pointer;
-            border-right: 1px solid var(--thin-border);
-            border-bottom: 1px solid var(--thin-border);
+            border: none;
             box-sizing: border-box;
         }
 
-        .cell:nth-child(9n) { border-right: none; }
-        .cell:nth-child(n+73) { border-bottom: none; }
-
-        .cell.border-right { border-right: 3px solid var(--line-color) !important; }
-        .cell.border-bottom { border-bottom: 3px solid var(--line-color) !important; }
+        .cell.border-right { border-right: 2px solid var(--line-color); }
+        .cell.border-bottom { border-bottom: 2px solid var(--line-color); }
 
         /* Game Over 遮罩 */
         #game-over-overlay {
