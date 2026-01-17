@@ -2,7 +2,7 @@
 <html lang="zh-TW">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     <title>嚴格數獨 (Sudoku Strict)</title>
     <style>
         :root {
@@ -17,6 +17,7 @@
             --filled-color: #0072e3;
             --fixed-color: #000;
             --thin-border: #c6d2df; 
+            --note-color: #7f8c8d;
         }
 
         body {
@@ -28,35 +29,29 @@
             justify-content: center;
             min-height: 100vh;
             margin: 0;
-            user-select: none;
+            user-select: none; /* 禁止選取文字 */
+            -webkit-user-select: none;
+            touch-action: manipulation;
         }
 
-        /* 頂部資訊列 */
+        /* --- 頂部資訊列 --- */
         .top-bar {
             width: 90vw;
             max-width: 450px;
             display: flex;
             justify-content: space-between;
             align-items: center;
-            margin-bottom: 10px;
+            margin-bottom: 5px;
             color: var(--text-color);
         }
         
-        .info-group {
-            display: flex;
-            gap: 15px;
-            align-items: center;
-        }
-
-        .mistake-counter {
-            font-weight: bold;
-            color: #555;
-        }
+        .info-group { display: flex; gap: 15px; align-items: center; }
+        .mistake-counter { font-weight: bold; color: #555; }
         .mistake-counter.warning { color: #e74c3c; }
-
         .timer { font-size: 20px; font-weight: bold; font-variant-numeric: tabular-nums; }
+        .seed-display { font-size: 12px; color: #888; cursor: pointer; text-decoration: underline; }
 
-        /* --- 新增：難度選擇列樣式 --- */
+        /* --- 難度選擇列 --- */
         .difficulty-bar {
             width: 90vw;
             max-width: 450px;
@@ -81,46 +76,27 @@
             color: #666;
             transition: all 0.2s;
         }
+        .diff-btn.active { background-color: var(--filled-color); color: white; box-shadow: 0 2px 4px rgba(0,0,0,0.2); }
 
-        .diff-btn.active {
-            background-color: var(--filled-color);
-            color: white;
-            box-shadow: 0 2px 4px rgba(0,0,0,0.2);
-        }
-
-        .sub-bar {
-            width: 90vw;
-            max-width: 450px;
-            display: flex;
-            justify-content: space-between;
-            margin-bottom: 15px;
-            align-items: center;
-        }
-
-        .seed-display {
-            font-size: 12px;
-            color: #888;
-            cursor: pointer;
-            text-decoration: underline;
-        }
-
-        /* 數獨棋盤容器 (保持優化後的樣式) */
+        /* --- 數獨棋盤 (格線修復核心) --- */
         #sudoku-board {
             display: grid;
             grid-template-columns: repeat(9, 1fr);
             width: 90vw;
             max-width: 450px;
             aspect-ratio: 1 / 1; 
-            background-color: var(--thin-border);
-            gap: 1px; 
+            background-color: var(--board-bg);
+            /* 改用 padding 代替 gap，並用 border 包覆 */
+            gap: 0; 
             border: 3px solid var(--line-color); 
             box-shadow: 0 4px 12px rgba(0,0,0,0.1);
-            margin-bottom: 20px;
+            margin-bottom: 10px;
             position: relative;
             box-sizing: border-box;
+            padding: 0; /* 確保內容貼齊邊框 */
         }
 
-        /* 單元格樣式 (保持優化後的樣式) */
+        /* 單元格樣式 */
         .cell {
             background-color: var(--board-bg);
             display: flex;
@@ -130,67 +106,79 @@
             font-weight: 500;
             color: var(--fixed-color);
             cursor: pointer;
-            border: none;
+            position: relative;
             box-sizing: border-box;
+
+            /* 核心修復：強制所有格子都有 1px 邊框 */
+            border: 1px solid var(--thin-border);
+            /* 使用負邊距讓邊框重疊，避免變粗或消失 */
+            margin-right: -1px;
+            margin-bottom: -1px;
+            z-index: 1; /* 基礎層級 */
         }
 
-        .cell.border-right { border-right: 2px solid var(--line-color); }
-        .cell.border-bottom { border-bottom: 2px solid var(--line-color); }
+        /* 3x3 粗線：提高層級覆蓋細線 */
+        .cell.border-right {
+            border-right: 2px solid var(--line-color) !important;
+            z-index: 5; /* 浮在細線上面 */
+        }
+        .cell.border-bottom {
+            border-bottom: 2px solid var(--line-color) !important;
+            z-index: 5; /* 浮在細線上面 */
+        }
 
-        /* Game Over 遮罩 */
-        #game-over-overlay {
+        /* 邊緣處理：防止最後一排溢出容器 */
+        .cell:nth-child(9n) { margin-right: 0; border-right: none; }
+        .cell:nth-child(n+73) { margin-bottom: 0; border-bottom: none; }
+
+
+        /* --- 筆記 (Notes) 樣式 --- */
+        .note-grid {
             position: absolute;
-            top: 0; left: 0; width: 100%; height: 100%;
-            background: rgba(255, 255, 255, 0.85);
-            display: none;
-            flex-direction: column;
+            top: 0; left: 0;
+            width: 100%; height: 100%;
+            display: grid;
+            grid-template-columns: repeat(3, 1fr);
+            grid-template-rows: repeat(3, 1fr);
+            pointer-events: none; /* 讓點擊穿透 */
+        }
+        .note-num {
+            display: flex;
             justify-content: center;
             align-items: center;
-            z-index: 10;
-        }
-        #game-over-overlay h2 { margin: 0 0 10px 0; color: #e74c3c; }
-        #game-over-overlay button {
-            padding: 10px 20px;
-            background: var(--filled-color);
-            color: white;
-            border: none;
-            border-radius: 5px;
-            cursor: pointer;
-            font-size: 16px;
+            font-size: 9px; /* 字體調小一點以免太擠 */
+            color: var(--note-color);
+            font-weight: normal;
         }
 
-        .cell.selected { background-color: var(--selected-color) !important; }
+        /* --- 狀態樣式 --- */
+        .cell.selected { background-color: var(--selected-color) !important; z-index: 2; } /* 選取時稍微浮起 */
         .cell.same-number { background-color: var(--same-num-color) !important; }
         .cell.highlight { background-color: var(--highlight-color); }
         .cell.error { background-color: var(--error-color) !important; color: #e74c3c !important; }
-        
-        @keyframes shake {
-            0% { transform: translate(1px, 1px) rotate(0deg); }
-            10% { transform: translate(-1px, -2px) rotate(-1deg); }
-            20% { transform: translate(-3px, 0px) rotate(1deg); }
-            30% { transform: translate(3px, 2px) rotate(0deg); }
-            40% { transform: translate(1px, -1px) rotate(1deg); }
-            50% { transform: translate(-1px, 2px) rotate(-1deg); }
-            60% { transform: translate(-3px, 1px) rotate(0deg); }
-            100% { transform: translate(0, 0) rotate(0deg); }
-        }
-        .shake-animation { animation: shake 0.5s; }
-
         .cell.fixed { font-weight: bold; }
         .cell.user-input { color: var(--filled-color); }
 
-        /* 功能按鈕區 (修改為3欄以容納重來按鈕) */
+        /* 搖晃動畫 */
+        @keyframes shake {
+            0% { transform: translate(1px, 1px); } 20% { transform: translate(-3px, 0px); }
+            40% { transform: translate(3px, 0px); } 60% { transform: translate(-3px, 0px); }
+            100% { transform: translate(0, 0); }
+        }
+        .shake-animation { animation: shake 0.4s; }
+
+        /* --- 功能按鈕 --- */
         .game-actions {
             width: 90vw;
             max-width: 450px;
             display: grid;
-            grid-template-columns: 1fr 1fr 1fr; /* 三個按鈕平分 */
+            grid-template-columns: 1fr 1fr 1fr;
             gap: 8px;
-            margin-bottom: 15px;
+            margin-bottom: 5px;
         }
 
         .action-btn {
-            padding: 10px 0; /* 調整內距以適應較小的按鈕 */
+            padding: 10px 0;
             border: 1px solid var(--filled-color);
             border-radius: 8px;
             font-size: 14px;
@@ -204,38 +192,68 @@
         }
         .action-btn:hover { background-color: #f0f7ff; }
         .btn-new { background-color: var(--filled-color); color: white; }
-        .btn-new:hover { background-color: #005bb5; }
 
-        /* 數字鍵盤 */
+        /* --- 數字鍵盤 --- */
         .numpad {
             display: grid;
             grid-template-columns: repeat(5, 1fr);
             gap: 8px;
             width: 90vw;
             max-width: 450px;
+            user-select: none; 
+            touch-action: none; /* 關鍵：防止下滑時觸發瀏覽器滾動 */
         }
 
         .num-btn {
             background-color: white;
             border: 1px solid #c6d2df;
             border-radius: 8px;
-            height: 48px;
-            font-size: 22px;
+            height: 54px; /* 加高方便下滑 */
+            font-size: 24px;
             color: var(--filled-color);
             display: flex;
             justify-content: center;
             align-items: center;
             cursor: pointer;
             box-shadow: 0 2px 0 #dce3eb;
+            transition: transform 0.1s, background 0.1s;
+            position: relative;
         }
-        .num-btn:active { transform: translateY(2px); box-shadow: none; }
-        .num-btn.disabled { opacity: 0.5; pointer-events: none; }
+        
+        /* 下滑視覺回饋 */
+        .num-btn.swiping {
+            background-color: var(--filled-color);
+            color: white;
+            transform: translateY(6px); /* 明顯位移 */
+            box-shadow: none;
+        }
+        
+        .hint-text {
+            width: 90vw;
+            max-width: 450px;
+            text-align: center;
+            font-size: 13px;
+            color: #888;
+            margin-top: 10px;
+            padding-bottom: 20px;
+        }
+
+        /* Game Over Overlay */
+        #game-over-overlay {
+            position: absolute; top: 0; left: 0; width: 100%; height: 100%;
+            background: rgba(255, 255, 255, 0.9);
+            display: none; flex-direction: column;
+            justify-content: center; align-items: center; z-index: 20;
+        }
+        #game-over-overlay h2 { margin: 0 0 10px 0; color: #e74c3c; }
+        #game-over-overlay button {
+            padding: 10px 20px; background: var(--filled-color);
+            color: white; border: none; border-radius: 5px; font-size: 16px;
+        }
 
     </style>
 <link rel="manifest" href="manifest.webmanifest">
 <meta name="theme-color" content="#0072e3">
-<link rel="icon" href="icon.png" sizes="2048x2048">
-<link rel="apple-touch-icon" href="icon.png" sizes="2048x2048">
 <meta name="apple-mobile-web-app-capable" content="yes">
 </head>
 <body>
@@ -272,53 +290,47 @@
     </div>
 
     <div class="numpad" id="numpad">
-        <div class="num-btn" onclick="fillNumber(1)">1</div>
-        <div class="num-btn" onclick="fillNumber(2)">2</div>
-        <div class="num-btn" onclick="fillNumber(3)">3</div>
-        <div class="num-btn" onclick="fillNumber(4)">4</div>
-        <div class="num-btn" onclick="fillNumber(5)">5</div>
-        <div class="num-btn" onclick="fillNumber(6)">6</div>
-        <div class="num-btn" onclick="fillNumber(7)">7</div>
-        <div class="num-btn" onclick="fillNumber(8)">8</div>
-        <div class="num-btn" onclick="fillNumber(9)">9</div>
-        <div class="num-btn" onclick="fillNumber('X')" style="color: #e74c3c;">✕</div>
+        <div class="num-btn" data-num="1">1</div>
+        <div class="num-btn" data-num="2">2</div>
+        <div class="num-btn" data-num="3">3</div>
+        <div class="num-btn" data-num="4">4</div>
+        <div class="num-btn" data-num="5">5</div>
+        <div class="num-btn" data-num="6">6</div>
+        <div class="num-btn" data-num="7">7</div>
+        <div class="num-btn" data-num="8">8</div>
+        <div class="num-btn" data-num="9">9</div>
+        <div class="num-btn" data-num="X" style="color: #e74c3c;">✕</div>
     </div>
+    <div class="hint-text">💡 操作技巧：點擊寫筆記，向下滑動填入數字</div>
 
     <script>
-        // 變數
+        // --- 遊戲狀態 ---
         let board = [];
         let solution = [];
         let fixedMask = [];
+        let notes = []; // 筆記資料：每個格子是一個 Set
         let selectedCellIndex = null;
         let timerInterval;
         let seconds = 0;
         let currentSeed = 0; 
         let rngState = 0;
         
-        // 錯誤處置變數
         let mistakes = 0;
         const MAX_MISTAKES = 3;
         let isGameOver = false;
 
-        // 恢復：難度設定
         let currentDifficulty = 'medium';
-        const DIFFICULTY_HOLES = {
-            'easy': 30, 
-            'medium': 40, 
-            'hard': 50, 
-            'expert': 58
-        };
+        const DIFFICULTY_HOLES = { 'easy': 30, 'medium': 40, 'hard': 50, 'expert': 58 };
 
-        // RNG
+        // --- RNG (隨機數生成) ---
         function seedRandom(seed) { rngState = seed; }
         function myRandom() {
             rngState = (rngState * 9301 + 49297) % 233280;
             return rngState / 233280.0;
         }
 
-        // 初始化
+        // --- 初始化遊戲 ---
         function initGame(seedInput = null) {
-            // 重置錯誤計數
             mistakes = 0;
             isGameOver = false;
             updateMistakeUI();
@@ -334,46 +346,38 @@
             seedRandom(currentSeed);
             document.getElementById('seed-label').innerText = `Seed: #${currentSeed}`;
 
+            // 初始化 81 個格子的筆記
+            notes = Array.from({length: 81}, () => new Set());
+
             startTimer();
             generateBoard();
             renderBoard();
             selectedCellIndex = null;
         }
 
-        // 新增：設定難度
         function setDifficulty(level) {
             currentDifficulty = level;
-            // 更新按鈕樣式
             document.querySelectorAll('.diff-btn').forEach(btn => btn.classList.remove('active'));
             document.getElementById(`btn-${level}`).classList.add('active');
-            // 切換難度視為開新局
             initGame();
         }
 
-        // 新增：重置本局
         function resetCurrentGame() {
             if (!confirm('確定要清空當前進度並重來嗎？')) return;
-            
-            // 恢復錯誤計數
             mistakes = 0;
             updateMistakeUI();
-            
-            // 清空非題目格子
             for (let i = 0; i < 81; i++) {
                 if (!fixedMask[i]) {
                     board[i] = 0;
+                    notes[i].clear();
                 }
             }
-            // 重置時間
             startTimer();
             renderBoard();
-            
-            if (selectedCellIndex !== null) {
-                selectCell(selectedCellIndex);
-            }
+            if (selectedCellIndex !== null) selectCell(selectedCellIndex);
         }
 
-        // 生成邏輯
+        // --- 生成邏輯 ---
         function shuffleArray(array) {
             for (let i = array.length - 1; i > 0; i--) {
                 const j = Math.floor(myRandom() * (i + 1));
@@ -388,9 +392,7 @@
             let indices = Array.from({length: 81}, (_, i) => i);
             shuffleArray(indices);
             
-            // 修正：使用當前難度的挖洞數量
             let holes = DIFFICULTY_HOLES[currentDifficulty];
-            
             for (let i = 0; i < 81 && holes > 0; i++) {
                 let idx = indices[i];
                 if (board[idx] !== 0) {
@@ -427,7 +429,7 @@
             return true;
         }
 
-        // 渲染
+        // --- 渲染 (Render) ---
         function renderBoard() {
             const container = document.getElementById('sudoku-board');
             const overlay = document.getElementById('game-over-overlay');
@@ -438,19 +440,35 @@
                 const cell = document.createElement('div');
                 cell.classList.add('cell');
                 
+                // 標記 3x3 區域
                 const col = index % 9;
                 const row = Math.floor(index / 9);
-                // 應用 3x3 粗線 class
                 if (col === 2 || col === 5) cell.classList.add('border-right');
                 if (row === 2 || row === 5) cell.classList.add('border-bottom');
 
-                if (num !== 0 && fixedMask[index]) {
+                // 內容顯示
+                if (num !== 0) {
+                    // 顯示數字
                     cell.textContent = num;
-                    cell.classList.add('fixed');
-                } else if (num !== 0) {
-                    cell.textContent = num;
-                    cell.classList.add('user-input');
-                    if (num !== solution[index]) cell.classList.add('error');
+                    if (fixedMask[index]) {
+                        cell.classList.add('fixed');
+                    } else {
+                        cell.classList.add('user-input');
+                        if (num !== solution[index]) cell.classList.add('error');
+                    }
+                } else {
+                    // 顯示筆記 (Note Grid)
+                    if (notes[index] && notes[index].size > 0) {
+                        const noteGrid = document.createElement('div');
+                        noteGrid.classList.add('note-grid');
+                        for (let n = 1; n <= 9; n++) {
+                            const noteNum = document.createElement('div');
+                            noteNum.classList.add('note-num');
+                            if (notes[index].has(n)) noteNum.textContent = n;
+                            noteGrid.appendChild(noteNum);
+                        }
+                        cell.appendChild(noteGrid);
+                    }
                 }
                 
                 cell.onclick = () => selectCell(index);
@@ -461,14 +479,16 @@
         function selectCell(index) {
             if (isGameOver) return;
             selectedCellIndex = index;
-            // 正確選取所有 .cell 元素
             const cellDivs = Array.from(document.querySelectorAll('.cell'));
-            
             const selectedVal = board[index];
+            
+            // 清除舊樣式
             cellDivs.forEach(c => c.classList.remove('selected', 'highlight', 'same-number'));
             
+            // 標記當前
             cellDivs[index].classList.add('selected');
             
+            // 標記關聯與相同數字
             const row = Math.floor(index / 9);
             const col = index % 9;
             cellDivs.forEach((c, i) => {
@@ -479,12 +499,92 @@
             });
         }
 
-        function fillNumber(num) {
+        // --- 核心互動：觸控下滑與點擊 ---
+        document.querySelectorAll('.num-btn').forEach(btn => {
+            let startY = 0;
+            let isSwiping = false;
+            let num = btn.dataset.num;
+            if (num !== 'X') num = parseInt(num);
+
+            const handleStart = (y) => {
+                startY = y;
+                isSwiping = false;
+            };
+
+            const handleMove = (y, el) => {
+                const deltaY = y - startY;
+                // 下滑超過 25px 視為填寫意圖
+                if (deltaY > 25) { 
+                    isSwiping = true;
+                    el.classList.add('swiping');
+                } else {
+                    el.classList.remove('swiping');
+                }
+            };
+
+            const handleEnd = (el) => {
+                el.classList.remove('swiping');
+                if (isSwiping) {
+                    fillRealNumber(num); // 下滑 = 填寫
+                } else {
+                    toggleNote(num); // 點擊 = 筆記
+                }
+            };
+
+            // Touch Events (手機)
+            btn.addEventListener('touchstart', (e) => {
+                e.preventDefault(); // 禁止瀏覽器原生滾動
+                handleStart(e.touches[0].clientY);
+            }, {passive: false});
+
+            btn.addEventListener('touchmove', (e) => {
+                e.preventDefault(); // 禁止瀏覽器原生滾動
+                handleMove(e.touches[0].clientY, btn);
+            }, {passive: false});
+
+            btn.addEventListener('touchend', (e) => {
+                handleEnd(btn);
+            });
+
+            // Mouse Events (電腦/測試)
+            btn.addEventListener('mousedown', (e) => {
+                handleStart(e.clientY);
+                const onMouseMove = (moveE) => handleMove(moveE.clientY, btn);
+                const onMouseUp = () => {
+                    document.removeEventListener('mousemove', onMouseMove);
+                    document.removeEventListener('mouseup', onMouseUp);
+                    handleEnd(btn);
+                };
+                document.addEventListener('mousemove', onMouseMove);
+                document.addEventListener('mouseup', onMouseUp);
+            });
+        });
+
+        // 1. 筆記邏輯
+        function toggleNote(num) {
+            if (isGameOver || selectedCellIndex === null) return;
+            // 已有實數或固定題，不能寫筆記
+            if (board[selectedCellIndex] !== 0 || fixedMask[selectedCellIndex]) return;
+
+            if (num === 'X') {
+                notes[selectedCellIndex].clear(); // 清空筆記
+            } else {
+                const cellNotes = notes[selectedCellIndex];
+                if (cellNotes.has(num)) cellNotes.delete(num);
+                else cellNotes.add(num);
+            }
+            renderBoard();
+            selectCell(selectedCellIndex); // 保持高亮
+        }
+
+        // 2. 填寫邏輯 (含自動清理筆記)
+        function fillRealNumber(num) {
             if (isGameOver || selectedCellIndex === null || fixedMask[selectedCellIndex]) return;
             
             const cellDivs = document.querySelectorAll('.cell');
             const currentCell = cellDivs[selectedCellIndex];
 
+            // 清除 (X)
             if (num === 'X') {
                 board[selectedCellIndex] = 0;
                 renderBoard();
@@ -492,34 +592,56 @@
                 return;
             }
 
-            // 錯誤檢查邏輯
+            // 錯誤檢查
             if (num !== solution[selectedCellIndex]) {
                 mistakes++;
                 updateMistakeUI();
-                
                 currentCell.textContent = num;
                 currentCell.classList.add('error', 'shake-animation');
                 
-                board[selectedCellIndex] = num;
-                renderBoard();
-                selectCell(selectedCellIndex);
+                // 延遲重繪 (把錯誤數字洗掉)
+                setTimeout(() => renderBoard(), 400);
                 
-                if (mistakes >= MAX_MISTAKES) {
-                    triggerGameOver();
-                }
+                if (mistakes >= MAX_MISTAKES) triggerGameOver();
             } else {
+                // 正確填入
                 board[selectedCellIndex] = num;
+                notes[selectedCellIndex].clear(); // 清除該格筆記
+                
+                // 自動清理衝突筆記
+                cleanConflictingNotes(selectedCellIndex, num);
+
                 renderBoard();
                 selectCell(selectedCellIndex);
                 checkWin();
             }
         }
 
+        function cleanConflictingNotes(index, num) {
+            const row = Math.floor(index / 9);
+            const col = index % 9;
+            const startRow = Math.floor(row / 3) * 3;
+            const startCol = Math.floor(col / 3) * 3;
+
+            for (let i = 0; i < 81; i++) {
+                let r = Math.floor(i / 9);
+                let c = i % 9;
+                
+                // 檢查是否關聯 (同行、同列、同宮)
+                let isRelated = (r === row) || (c === col) || 
+                                (r >= startRow && r < startRow + 3 && c >= startCol && c < startCol + 3);
+                
+                if (isRelated && notes[i].has(num)) {
+                    notes[i].delete(num);
+                }
+            }
+        }
+
+        // --- 輔助功能 ---
         function updateMistakeUI() {
             const el = document.getElementById('mistake-display');
             el.innerText = `錯誤: ${mistakes}/${MAX_MISTAKES}`;
-            if (mistakes >= 2) el.classList.add('warning');
-            else el.classList.remove('warning');
+            if (mistakes >= 2) el.classList.add('warning'); else el.classList.remove('warning');
         }
 
         function triggerGameOver() {
@@ -557,20 +679,26 @@
             navigator.clipboard.writeText(currentSeed);
             alert("種子碼已複製");
         }
+
+        // 鍵盤支援 (Shift=筆記)
         document.addEventListener('keydown', (e) => {
             if (selectedCellIndex === null) return;
-            if (e.key >= '1' && e.key <= '9') fillNumber(parseInt(e.key));
-            if (e.key === 'Backspace') fillNumber('X');
+            const isNote = e.shiftKey;
+            if (e.key >= '1' && e.key <= '9') {
+                const num = parseInt(e.key);
+                if (isNote) toggleNote(num); else fillRealNumber(num);
+            }
+            if (e.key === 'Backspace' || e.key === 'Delete') fillRealNumber('X');
         });
 
+        // 啟動
         initGame();
 
-        // PWA Service Worker 註冊
         if ('serviceWorker' in navigator) {
             window.addEventListener('load', () => {
                 navigator.serviceWorker.register('./sw.js');
             });
         }
-</script>
+    </script>
 </body>
 </html>
