@@ -18,197 +18,118 @@
             --fixed-color: #000;
             --thin-border: #c6d2df; 
             --note-color: #7f8c8d;
+            --menu-bg: #ffffff;
+            --overlay-bg: rgba(0, 0, 0, 0.5);
         }
+
+        * { box-sizing: border-box; }
 
         body {
             font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
             background-color: var(--bg-color);
+            margin: 0;
+            height: 100vh;
             display: flex;
             flex-direction: column;
-            align-items: center;
-            justify-content: center;
-            min-height: 100vh;
-            margin: 0;
-            user-select: none; /* 禁止選取文字 */
+            overflow: hidden; /* 禁止整體捲動 */
+            user-select: none;
             -webkit-user-select: none;
-            touch-action: manipulation;
+            touch-action: none;
         }
 
-        /* --- 頂部資訊列 --- */
+        /* --- 1. 頂部導航列 (Top Bar) --- */
         .top-bar {
-            width: 90vw;
-            max-width: 450px;
+            height: 50px;
+            width: 100%;
+            background-color: #fff;
             display: flex;
             justify-content: space-between;
             align-items: center;
-            margin-bottom: 5px;
+            padding: 0 15px;
+            box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+            z-index: 10;
+        }
+
+        .menu-btn {
+            font-size: 24px;
+            cursor: pointer;
+            background: none;
+            border: none;
             color: var(--text-color);
+            padding: 5px;
+        }
+
+        .game-status {
+            display: flex;
+            gap: 15px;
+            font-size: 16px;
+            font-weight: bold;
+            color: var(--text-color);
+            font-variant-numeric: tabular-nums;
         }
         
-        .info-group { display: flex; gap: 15px; align-items: center; }
-        .mistake-counter { font-weight: bold; color: #555; }
         .mistake-counter.warning { color: #e74c3c; }
-        .timer { font-size: 20px; font-weight: bold; font-variant-numeric: tabular-nums; }
-        .seed-display { font-size: 12px; color: #888; cursor: pointer; text-decoration: underline; }
 
-        /* --- 難度選擇列 --- */
-        .difficulty-bar {
-            width: 90vw;
-            max-width: 450px;
-            margin-bottom: 10px;
+        /* --- 2. 遊戲主區域 (Board Area) --- */
+        .game-container {
+            flex: 1; /* 佔據剩餘空間 */
             display: flex;
-            gap: 5px;
-            background: #e2e6ea;
-            padding: 4px;
-            border-radius: 25px;
+            justify-content: center;
+            align-items: center;
+            padding: 10px;
+            width: 100%;
+            position: relative;
         }
 
-        .diff-btn {
-            flex: 1;
-            padding: 6px 0;
-            text-align: center;
-            border: none;
-            background: transparent;
-            cursor: pointer;
-            border-radius: 20px;
-            font-size: 14px;
-            font-weight: 500;
-            color: #666;
-            transition: all 0.2s;
-        }
-        .diff-btn.active { background-color: var(--filled-color); color: white; box-shadow: 0 2px 4px rgba(0,0,0,0.2); }
-
-        /* --- 數獨棋盤 (格線修復核心) --- */
         #sudoku-board {
             display: grid;
             grid-template-columns: repeat(9, 1fr);
-            width: 90vw;
-            max-width: 450px;
+            /* 讓棋盤盡可能大，但留空間給鍵盤 */
+            width: 100%;
+            max-width: 450px; 
+            /* 關鍵：動態計算最大高度，避免蓋到鍵盤 (100vh - header - numpad - margins) */
+            max-height: calc(100vh - 160px); 
             aspect-ratio: 1 / 1; 
+            
             background-color: var(--board-bg);
-            /* 改用 padding 代替 gap，並用 border 包覆 */
             gap: 0; 
             border: 3px solid var(--line-color); 
             box-shadow: 0 4px 12px rgba(0,0,0,0.1);
-            margin-bottom: 10px;
             position: relative;
-            box-sizing: border-box;
-            padding: 0; /* 確保內容貼齊邊框 */
+            padding: 0; 
         }
 
-        /* 單元格樣式 */
-        .cell {
-            background-color: var(--board-bg);
+        /* --- 3. 底部鍵盤區 (Numpad) --- */
+        .bottom-controls {
+            width: 100%;
+            background-color: var(--bg-color);
+            padding: 10px 10px 20px 10px; /* 底部留白適應 iPhone Home Bar */
             display: flex;
-            justify-content: center;
+            flex-direction: column;
             align-items: center;
-            font-size: 24px;
-            font-weight: 500;
-            color: var(--fixed-color);
-            cursor: pointer;
-            position: relative;
-            box-sizing: border-box;
-
-            /* 核心修復：強制所有格子都有 1px 邊框 */
-            border: 1px solid var(--thin-border);
-            /* 使用負邊距讓邊框重疊，避免變粗或消失 */
-            margin-right: -1px;
-            margin-bottom: -1px;
-            z-index: 1; /* 基礎層級 */
+            z-index: 10;
         }
 
-        /* 3x3 粗線：提高層級覆蓋細線 */
-        .cell.border-right {
-            border-right: 2px solid var(--line-color) !important;
-            z-index: 5; /* 浮在細線上面 */
-        }
-        .cell.border-bottom {
-            border-bottom: 2px solid var(--line-color) !important;
-            z-index: 5; /* 浮在細線上面 */
+        .hint-text {
+            font-size: 12px;
+            color: #888;
+            margin-bottom: 8px;
+            text-align: center;
         }
 
-        /* 邊緣處理：防止最後一排溢出容器 */
-        .cell:nth-child(9n) { margin-right: 0; border-right: none; }
-        .cell:nth-child(n+73) { margin-bottom: 0; border-bottom: none; }
-
-
-        /* --- 筆記 (Notes) 樣式 --- */
-        .note-grid {
-            position: absolute;
-            top: 0; left: 0;
-            width: 100%; height: 100%;
-            display: grid;
-            grid-template-columns: repeat(3, 1fr);
-            grid-template-rows: repeat(3, 1fr);
-            pointer-events: none; /* 讓點擊穿透 */
-        }
-        .note-num {
-            display: flex;
-            justify-content: center;
-            align-items: center;
-            font-size: 9px; /* 字體調小一點以免太擠 */
-            color: var(--note-color);
-            font-weight: normal;
-        }
-
-        /* --- 狀態樣式 --- */
-        .cell.selected { background-color: var(--selected-color) !important; z-index: 2; } /* 選取時稍微浮起 */
-        .cell.same-number { background-color: var(--same-num-color) !important; }
-        .cell.highlight { background-color: var(--highlight-color); }
-        .cell.error { background-color: var(--error-color) !important; color: #e74c3c !important; }
-        .cell.fixed { font-weight: bold; }
-        .cell.user-input { color: var(--filled-color); }
-
-        /* 搖晃動畫 */
-        @keyframes shake {
-            0% { transform: translate(1px, 1px); } 20% { transform: translate(-3px, 0px); }
-            40% { transform: translate(3px, 0px); } 60% { transform: translate(-3px, 0px); }
-            100% { transform: translate(0, 0); }
-        }
-        .shake-animation { animation: shake 0.4s; }
-
-        /* --- 功能按鈕 --- */
-        .game-actions {
-            width: 90vw;
-            max-width: 450px;
-            display: grid;
-            grid-template-columns: 1fr 1fr 1fr;
-            gap: 8px;
-            margin-bottom: 5px;
-        }
-
-        .action-btn {
-            padding: 10px 0;
-            border: 1px solid var(--filled-color);
-            border-radius: 8px;
-            font-size: 14px;
-            cursor: pointer;
-            font-weight: bold;
-            color: var(--filled-color);
-            background-color: #fff;
-            display: flex;
-            justify-content: center;
-            align-items: center;
-        }
-        .action-btn:hover { background-color: #f0f7ff; }
-        .btn-new { background-color: var(--filled-color); color: white; }
-
-        /* --- 數字鍵盤 --- */
         .numpad {
             display: grid;
             grid-template-columns: repeat(5, 1fr);
-            gap: 8px;
-            width: 90vw;
-            max-width: 450px;
-            user-select: none; 
-            touch-action: none; /* 關鍵：防止下滑時觸發瀏覽器滾動 */
+            gap: 6px;
+            width: 100%;
+            max-width: 500px;
         }
 
         .num-btn {
             background-color: white;
             border: 1px solid #c6d2df;
             border-radius: 8px;
-            height: 54px; /* 加高方便下滑 */
+            height: 52px; /* 按鈕高度 */
             font-size: 24px;
             color: var(--filled-color);
             display: flex;
@@ -216,27 +137,153 @@
             align-items: center;
             cursor: pointer;
             box-shadow: 0 2px 0 #dce3eb;
-            transition: transform 0.1s, background 0.1s;
+            transition: transform 0.1s;
             position: relative;
         }
         
-        /* 下滑視覺回饋 */
         .num-btn.swiping {
             background-color: var(--filled-color);
             color: white;
-            transform: translateY(6px); /* 明顯位移 */
+            transform: translateY(6px);
             box-shadow: none;
         }
-        
-        .hint-text {
-            width: 90vw;
-            max-width: 450px;
-            text-align: center;
-            font-size: 13px;
-            color: #888;
-            margin-top: 10px;
-            padding-bottom: 20px;
+
+        /* --- 4. 側邊選單 (Side Menu) --- */
+        .side-menu-overlay {
+            position: fixed;
+            top: 0; left: 0;
+            width: 100%; height: 100%;
+            background-color: var(--overlay-bg);
+            z-index: 99;
+            opacity: 0;
+            visibility: hidden;
+            transition: opacity 0.3s;
         }
+        .side-menu-overlay.active {
+            opacity: 1; visibility: visible;
+        }
+
+        .side-menu {
+            position: fixed;
+            top: 0; left: -280px; /* 預設隱藏 */
+            width: 280px;
+            height: 100%;
+            background-color: var(--menu-bg);
+            z-index: 100;
+            box-shadow: 2px 0 10px rgba(0,0,0,0.1);
+            transition: left 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+            display: flex;
+            flex-direction: column;
+            padding: 20px;
+            overflow-y: auto;
+        }
+        .side-menu.active { left: 0; }
+
+        .menu-header {
+            font-size: 22px;
+            font-weight: bold;
+            margin-bottom: 20px;
+            color: var(--text-color);
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+        .close-menu-btn {
+            background: none; border: none; font-size: 24px; cursor: pointer; color: #888;
+        }
+
+        /* 選單內的區塊 */
+        .menu-section { margin-bottom: 25px; }
+        .menu-section h3 {
+            font-size: 14px; color: #888; margin-bottom: 10px; text-transform: uppercase; letter-spacing: 1px;
+        }
+        
+        /* 難度按鈕 (垂直排列) */
+        .menu-diff-options { display: flex; flex-direction: column; gap: 8px; }
+        .menu-diff-btn {
+            padding: 12px;
+            border: 1px solid #ddd;
+            border-radius: 8px;
+            background: #fff;
+            text-align: left;
+            font-size: 16px;
+            cursor: pointer;
+            display: flex;
+            justify-content: space-between;
+        }
+        .menu-diff-btn.active {
+            border-color: var(--filled-color);
+            background-color: #f0f7ff;
+            color: var(--filled-color);
+            font-weight: bold;
+        }
+        .menu-diff-btn.active::after { content: '✓'; }
+
+        /* 功能按鈕 */
+        .menu-actions { display: flex; flex-direction: column; gap: 10px; }
+        .menu-action-btn {
+            padding: 12px;
+            border: none;
+            border-radius: 8px;
+            font-size: 16px;
+            font-weight: bold;
+            cursor: pointer;
+            text-align: center;
+            background-color: #f0f2f5;
+            color: var(--text-color);
+            transition: background 0.2s;
+        }
+        .menu-action-btn:hover { background-color: #e4e6e9; }
+        
+        .btn-primary { background-color: var(--filled-color); color: white; }
+        .btn-primary:hover { background-color: #005bb5; }
+        .btn-save { color: #27ae60; background: #eafaf1; }
+        .btn-load { color: #e67e22; background: #fef5e7; }
+
+        .seed-info {
+            font-size: 13px; color: #888; text-align: center; margin-top: auto; padding-top: 20px;
+            cursor: pointer; text-decoration: underline;
+        }
+
+        /* --- 棋盤細節 (維持格線修復) --- */
+        .cell {
+            background-color: var(--board-bg);
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            font-size: 24px; /* 手機上字體 */
+            font-weight: 500;
+            color: var(--fixed-color);
+            cursor: pointer;
+            position: relative;
+            box-sizing: border-box;
+            border: 1px solid var(--thin-border);
+            margin-right: -1px; margin-bottom: -1px;
+            z-index: 1; 
+        }
+        .cell.border-right { border-right: 2px solid var(--line-color) !important; z-index: 5; }
+        .cell.border-bottom { border-bottom: 2px solid var(--line-color) !important; z-index: 5; }
+        .cell:nth-child(9n) { margin-right: 0; border-right: none; }
+        .cell:nth-child(n+73) { margin-bottom: 0; border-bottom: none; }
+
+        /* 筆記 */
+        .note-grid {
+            position: absolute; top: 0; left: 0; width: 100%; height: 100%;
+            display: grid; grid-template-columns: repeat(3, 1fr); grid-template-rows: repeat(3, 1fr);
+            pointer-events: none; 
+        }
+        .note-num {
+            display: flex; justify-content: center; align-items: center;
+            font-size: 8px; color: var(--note-color); font-weight: normal;
+        }
+
+        /* 狀態樣式 */
+        .cell.selected { background-color: var(--selected-color) !important; z-index: 2; }
+        .cell.same-number { background-color: var(--same-num-color) !important; }
+        .cell.highlight { background-color: var(--highlight-color); }
+        .cell.error { background-color: var(--error-color) !important; color: #e74c3c !important; }
+        .cell.fixed { font-weight: bold; }
+        .cell.user-input { color: var(--filled-color); }
 
         /* Game Over Overlay */
         #game-over-overlay {
@@ -251,164 +298,244 @@
             color: white; border: none; border-radius: 5px; font-size: 16px;
         }
 
+        /* Toast */
+        #toast {
+            visibility: hidden; min-width: 200px; background-color: #333; color: #fff; text-align: center;
+            border-radius: 20px; padding: 10px; position: fixed; z-index: 200; left: 50%; bottom: 80px; /* 避開鍵盤 */
+            transform: translateX(-50%); font-size: 14px; opacity: 0; transition: opacity 0.3s;
+        }
+        #toast.show { visibility: visible; opacity: 0.9; }
+
+        @keyframes shake {
+            0% { transform: translate(1px, 1px); } 20% { transform: translate(-3px, 0px); }
+            40% { transform: translate(3px, 0px); } 60% { transform: translate(-3px, 0px); }
+            100% { transform: translate(0, 0); }
+        }
+        .shake-animation { animation: shake 0.4s; }
+
+        /* RWD 調整 */
+        @media (max-height: 600px) {
+            .cell { font-size: 18px; } /* 小螢幕字體縮小 */
+            .num-btn { height: 45px; }
+            .top-bar { height: 40px; }
+        }
     </style>
 <link rel="manifest" href="manifest.webmanifest">
-<meta name="theme-color" content="#0072e3">
+<meta name="theme-color" content="#ffffff">
 <meta name="apple-mobile-web-app-capable" content="yes">
 </head>
 <body>
 
-    <div class="difficulty-bar">
-        <div class="diff-btn" id="btn-easy" onclick="setDifficulty('easy')">簡單</div>
-        <div class="diff-btn active" id="btn-medium" onclick="setDifficulty('medium')">普通</div>
-        <div class="diff-btn" id="btn-hard" onclick="setDifficulty('hard')">困難</div>
-        <div class="diff-btn" id="btn-expert" onclick="setDifficulty('expert')">專家</div>
-    </div>
-
     <div class="top-bar">
-        <div class="info-group">
-            <span class="seed-display" onclick="copySeed()" id="seed-label">Seed: #----</span>
-        </div>
-        <div class="info-group">
-            <div class="mistake-counter" id="mistake-display">錯誤: 0/3</div>
-            <div class="timer" id="timer">00:00</div>
-        </div>
-    </div>
-    
-    <div id="sudoku-board">
-        <div id="game-over-overlay">
-            <h2>遊戲結束</h2>
-            <p>錯誤次數過多！</p>
-            <button onclick="initGame()">再試一次</button>
+        <button class="menu-btn" onclick="toggleMenu()">☰</button>
+        <div class="game-status">
+            <span id="mistake-display" class="mistake-counter">0/3</span>
+            <span id="timer">00:00</span>
         </div>
     </div>
 
-    <div class="game-actions">
-        <button class="action-btn" onclick="resetCurrentGame()">↺ 重來</button>
-        <button class="action-btn" onclick="promptSeed()">✎ 種子</button>
-        <button class="action-btn btn-new" onclick="initGame()">+ 新局</button>
+    <div class="game-container">
+        <div id="sudoku-board">
+            <div id="game-over-overlay">
+                <h2>遊戲結束</h2>
+                <p>錯誤次數過多！</p>
+                <button onclick="initGame()">再試一次</button>
+            </div>
+        </div>
     </div>
 
-    <div class="numpad" id="numpad">
-        <div class="num-btn" data-num="1">1</div>
-        <div class="num-btn" data-num="2">2</div>
-        <div class="num-btn" data-num="3">3</div>
-        <div class="num-btn" data-num="4">4</div>
-        <div class="num-btn" data-num="5">5</div>
-        <div class="num-btn" data-num="6">6</div>
-        <div class="num-btn" data-num="7">7</div>
-        <div class="num-btn" data-num="8">8</div>
-        <div class="num-btn" data-num="9">9</div>
-        <div class="num-btn" data-num="X" style="color: #e74c3c;">✕</div>
+    <div class="bottom-controls">
+        <div class="hint-text">💡 點擊寫筆記，按住下滑填入實際數字</div>
+        <div class="numpad" id="numpad">
+            <div class="num-btn" data-num="1">1</div>
+            <div class="num-btn" data-num="2">2</div>
+            <div class="num-btn" data-num="3">3</div>
+            <div class="num-btn" data-num="4">4</div>
+            <div class="num-btn" data-num="5">5</div>
+            <div class="num-btn" data-num="6">6</div>
+            <div class="num-btn" data-num="7">7</div>
+            <div class="num-btn" data-num="8">8</div>
+            <div class="num-btn" data-num="9">9</div>
+            <div class="num-btn" data-num="X" style="color: #e74c3c;">✕</div>
+        </div>
     </div>
-    <div class="hint-text">💡 操作技巧：點擊寫筆記，向下滑動填入數字</div>
+
+    <div class="side-menu-overlay" id="menu-overlay" onclick="closeMenu()"></div>
+    <div class="side-menu" id="side-menu">
+        <div class="menu-header">
+            選單
+            <button class="close-menu-btn" onclick="closeMenu()">✕</button>
+        </div>
+
+        <div class="menu-section">
+            <h3>難度選擇</h3>
+            <div class="menu-diff-options">
+                <div class="menu-diff-btn" id="menu-btn-easy" onclick="setDifficulty('easy')">簡單</div>
+                <div class="menu-diff-btn active" id="menu-btn-medium" onclick="setDifficulty('medium')">普通</div>
+                <div class="menu-diff-btn" id="menu-btn-hard" onclick="setDifficulty('hard')">困難</div>
+                <div class="menu-diff-btn" id="menu-btn-expert" onclick="setDifficulty('expert')">專家</div>
+            </div>
+        </div>
+
+        <div class="menu-section">
+            <h3>遊戲操作</h3>
+            <div class="menu-actions">
+                <button class="menu-action-btn btn-primary" onclick="initGame(); closeMenu();">＋ 新遊戲</button>
+                <button class="menu-action-btn" onclick="resetCurrentGame(); closeMenu();">↺ 本局重來</button>
+                <button class="menu-action-btn btn-save" onclick="manualSave(); closeMenu();">💾 保存進度</button>
+                <button class="menu-action-btn btn-load" onclick="manualLoad(); closeMenu();">📂 讀取進度</button>
+            </div>
+        </div>
+
+        <div class="menu-section">
+            <h3>其他</h3>
+            <div class="menu-actions">
+                <button class="menu-action-btn" onclick="promptSeed(); closeMenu();">✎ 輸入種子碼</button>
+            </div>
+        </div>
+
+        <div class="seed-info" onclick="copySeed()" id="seed-label">Seed: #----</div>
+    </div>
+
+    <div id="toast"></div>
 
     <script>
-        // --- 遊戲狀態 ---
-        let board = [];
-        let solution = [];
-        let fixedMask = [];
-        let notes = []; // 筆記資料：每個格子是一個 Set
+        // --- 變數 ---
+        let board = [], solution = [], fixedMask = [], notes = [];
         let selectedCellIndex = null;
-        let timerInterval;
-        let seconds = 0;
-        let currentSeed = 0; 
-        let rngState = 0;
-        
+        let timerInterval, seconds = 0;
+        let currentSeed = 0, rngState = 0;
         let mistakes = 0;
         const MAX_MISTAKES = 3;
         let isGameOver = false;
-
         let currentDifficulty = 'medium';
         const DIFFICULTY_HOLES = { 'easy': 30, 'medium': 40, 'hard': 50, 'expert': 58 };
+        const SAVE_KEY = 'sudoku_save_v2';
 
-        // --- RNG (隨機數生成) ---
+        // --- 選單控制 ---
+        function toggleMenu() {
+            document.getElementById('side-menu').classList.toggle('active');
+            document.getElementById('menu-overlay').classList.toggle('active');
+        }
+        function closeMenu() {
+            document.getElementById('side-menu').classList.remove('active');
+            document.getElementById('menu-overlay').classList.remove('active');
+        }
+
+        // --- RNG ---
         function seedRandom(seed) { rngState = seed; }
         function myRandom() {
             rngState = (rngState * 9301 + 49297) % 233280;
             return rngState / 233280.0;
         }
 
-        // --- 初始化遊戲 ---
+        // --- 初始化 ---
         function initGame(seedInput = null) {
-            mistakes = 0;
-            isGameOver = false;
-            updateMistakeUI();
+            if(timerInterval) clearInterval(timerInterval);
+            mistakes = 0; isGameOver = false; updateMistakeUI();
             document.getElementById('game-over-overlay').style.display = 'none';
-            document.getElementById('numpad').style.opacity = '1';
-            document.getElementById('numpad').style.pointerEvents = 'auto';
 
-            if (seedInput !== null) {
-                currentSeed = parseInt(seedInput);
-            } else {
-                currentSeed = Math.floor(Math.random() * 99999) + 1;
-            }
+            if (seedInput !== null) currentSeed = parseInt(seedInput);
+            else currentSeed = Math.floor(Math.random() * 99999) + 1;
+            
             seedRandom(currentSeed);
-            document.getElementById('seed-label').innerText = `Seed: #${currentSeed}`;
-
-            // 初始化 81 個格子的筆記
+            document.getElementById('seed-label').innerText = `Seed: #${currentSeed} (複製)`;
+            
             notes = Array.from({length: 81}, () => new Set());
-
             startTimer();
             generateBoard();
             renderBoard();
             selectedCellIndex = null;
+            
+            saveGame(true);
         }
 
+        // --- 存檔系統 ---
+        function saveGame(isAuto = false) {
+            if (isGameOver) return;
+            const saveData = {
+                board, solution, fixedMask,
+                notes: notes.map(set => Array.from(set)),
+                mistakes, seconds, currentDifficulty, currentSeed
+            };
+            localStorage.setItem(SAVE_KEY, JSON.stringify(saveData));
+            if (!isAuto) showToast("進度已保存！");
+        }
+
+        function loadGame() {
+            const json = localStorage.getItem(SAVE_KEY);
+            if (!json) { showToast("沒有存檔！"); return; }
+            try {
+                const data = JSON.parse(json);
+                board = data.board; solution = data.solution; fixedMask = data.fixedMask;
+                notes = data.notes.map(arr => new Set(arr));
+                mistakes = data.mistakes; seconds = data.seconds;
+                currentDifficulty = data.currentDifficulty; currentSeed = data.currentSeed;
+
+                updateDifficultyUI(currentDifficulty);
+                document.getElementById('seed-label').innerText = `Seed: #${currentSeed} (複製)`;
+                updateMistakeUI();
+                clearInterval(timerInterval);
+                startTimer();
+                renderBoard();
+                document.getElementById('game-over-overlay').style.display = 'none';
+                showToast("進度已讀取！");
+            } catch (e) { showToast("存檔損壞"); }
+        }
+
+        function manualSave() { saveGame(false); }
+        function manualLoad() { if(confirm("確定讀取舊進度？")) loadGame(); }
+
+        // --- 遊戲邏輯 ---
         function setDifficulty(level) {
             currentDifficulty = level;
-            document.querySelectorAll('.diff-btn').forEach(btn => btn.classList.remove('active'));
-            document.getElementById(`btn-${level}`).classList.add('active');
+            updateDifficultyUI(level);
             initGame();
         }
 
+        function updateDifficultyUI(level) {
+            document.querySelectorAll('.menu-diff-btn').forEach(btn => btn.classList.remove('active'));
+            document.getElementById(`menu-btn-${level}`).classList.add('active');
+            closeMenu();
+        }
+
         function resetCurrentGame() {
-            if (!confirm('確定要清空當前進度並重來嗎？')) return;
-            mistakes = 0;
-            updateMistakeUI();
+            if (!confirm('清空重來？')) return;
+            mistakes = 0; updateMistakeUI();
             for (let i = 0; i < 81; i++) {
-                if (!fixedMask[i]) {
-                    board[i] = 0;
-                    notes[i].clear();
-                }
+                if (!fixedMask[i]) { board[i] = 0; notes[i].clear(); }
             }
-            startTimer();
-            renderBoard();
+            saveGame(true); renderBoard();
             if (selectedCellIndex !== null) selectCell(selectedCellIndex);
         }
 
-        // --- 生成邏輯 ---
-        function shuffleArray(array) {
-            for (let i = array.length - 1; i > 0; i--) {
-                const j = Math.floor(myRandom() * (i + 1));
-                [array[i], array[j]] = [array[j], array[i]];
-            }
-        }
         function generateBoard() {
             solution = Array.from({ length: 81 }, () => 0);
             fillBoardRecursively(solution);
             board = [...solution];
             fixedMask = Array.from({ length: 81 }, () => true);
             let indices = Array.from({length: 81}, (_, i) => i);
-            shuffleArray(indices);
-            
+            // Fisher-Yates shuffle
+            for (let i = indices.length - 1; i > 0; i--) {
+                const j = Math.floor(myRandom() * (i + 1));
+                [indices[i], indices[j]] = [indices[j], indices[i]];
+            }
             let holes = DIFFICULTY_HOLES[currentDifficulty];
             for (let i = 0; i < 81 && holes > 0; i++) {
                 let idx = indices[i];
-                if (board[idx] !== 0) {
-                    board[idx] = 0;
-                    fixedMask[idx] = false;
-                    holes--;
-                }
+                if (board[idx] !== 0) { board[idx] = 0; fixedMask[idx] = false; holes--; }
             }
         }
+
         function fillBoardRecursively(grid) {
             let emptyIndex = grid.indexOf(0);
             if (emptyIndex === -1) return true;
-            let row = Math.floor(emptyIndex / 9);
-            let col = emptyIndex % 9;
+            let row = Math.floor(emptyIndex / 9), col = emptyIndex % 9;
             let nums = [1, 2, 3, 4, 5, 6, 7, 8, 9];
-            shuffleArray(nums);
+            for (let i = nums.length - 1; i > 0; i--) { // Shuffle nums
+                const j = Math.floor(myRandom() * (i + 1));
+                [nums[i], nums[j]] = [nums[j], nums[i]];
+            }
             for (let num of nums) {
                 if (isValid(grid, row, col, num)) {
                     grid[emptyIndex] = num;
@@ -418,59 +545,49 @@
             }
             return false;
         }
+
         function isValid(grid, row, col, num) {
             for (let i = 0; i < 9; i++) {
                 if (grid[row * 9 + i] === num) return false;
                 if (grid[i * 9 + col] === num) return false;
-                let boxRow = 3 * Math.floor(row / 3) + Math.floor(i / 3);
-                let boxCol = 3 * Math.floor(col / 3) + (i % 3);
-                if (grid[boxRow * 9 + boxCol] === num) return false;
+                let br = 3 * Math.floor(row / 3) + Math.floor(i / 3);
+                let bc = 3 * Math.floor(col / 3) + (i % 3);
+                if (grid[br * 9 + bc] === num) return false;
             }
             return true;
         }
 
-        // --- 渲染 (Render) ---
+        // --- 渲染 ---
         function renderBoard() {
             const container = document.getElementById('sudoku-board');
             const overlay = document.getElementById('game-over-overlay');
-            container.innerHTML = '';
-            container.appendChild(overlay);
+            container.innerHTML = ''; container.appendChild(overlay);
 
             board.forEach((num, index) => {
                 const cell = document.createElement('div');
                 cell.classList.add('cell');
-                
-                // 標記 3x3 區域
-                const col = index % 9;
-                const row = Math.floor(index / 9);
+                const col = index % 9, row = Math.floor(index / 9);
                 if (col === 2 || col === 5) cell.classList.add('border-right');
                 if (row === 2 || row === 5) cell.classList.add('border-bottom');
 
-                // 內容顯示
                 if (num !== 0) {
-                    // 顯示數字
                     cell.textContent = num;
-                    if (fixedMask[index]) {
-                        cell.classList.add('fixed');
-                    } else {
+                    if (fixedMask[index]) cell.classList.add('fixed');
+                    else {
                         cell.classList.add('user-input');
                         if (num !== solution[index]) cell.classList.add('error');
                     }
-                } else {
-                    // 顯示筆記 (Note Grid)
-                    if (notes[index] && notes[index].size > 0) {
-                        const noteGrid = document.createElement('div');
-                        noteGrid.classList.add('note-grid');
-                        for (let n = 1; n <= 9; n++) {
-                            const noteNum = document.createElement('div');
-                            noteNum.classList.add('note-num');
-                            if (notes[index].has(n)) noteNum.textContent = n;
-                            noteGrid.appendChild(noteNum);
-                        }
-                        cell.appendChild(noteGrid);
+                } else if (notes[index].size > 0) {
+                    const noteGrid = document.createElement('div');
+                    noteGrid.classList.add('note-grid');
+                    for (let n = 1; n <= 9; n++) {
+                        const div = document.createElement('div');
+                        div.className = 'note-num';
+                        if (notes[index].has(n)) div.textContent = n;
+                        noteGrid.appendChild(div);
                     }
+                    cell.appendChild(noteGrid);
                 }
-                
                 cell.onclick = () => selectCell(index);
                 container.appendChild(cell);
             });
@@ -479,195 +596,113 @@
         function selectCell(index) {
             if (isGameOver) return;
             selectedCellIndex = index;
-            const cellDivs = Array.from(document.querySelectorAll('.cell'));
-            const selectedVal = board[index];
-            
-            // 清除舊樣式
-            cellDivs.forEach(c => c.classList.remove('selected', 'highlight', 'same-number'));
-            
-            // 標記當前
-            cellDivs[index].classList.add('selected');
-            
-            // 標記關聯與相同數字
-            const row = Math.floor(index / 9);
-            const col = index % 9;
-            cellDivs.forEach((c, i) => {
-                const r = Math.floor(i / 9);
-                const c_idx = i % 9;
-                if (r === row || c_idx === col) c.classList.add('highlight');
-                if (selectedVal !== 0 && board[i] === selectedVal) c.classList.add('same-number');
+            const cells = document.querySelectorAll('.cell');
+            const val = board[index];
+            cells.forEach(c => c.classList.remove('selected', 'highlight', 'same-number'));
+            cells[index].classList.add('selected');
+            const r = Math.floor(index / 9), c = index % 9;
+            cells.forEach((cell, i) => {
+                const tr = Math.floor(i / 9), tc = i % 9;
+                if (tr === r || tc === c) cell.classList.add('highlight');
+                if (val !== 0 && board[i] === val) cell.classList.add('same-number');
             });
         }
 
-        // --- 核心互動：觸控下滑與點擊 ---
+        // --- 互動 (Touch/Mouse) ---
         document.querySelectorAll('.num-btn').forEach(btn => {
-            let startY = 0;
-            let isSwiping = false;
-            let num = btn.dataset.num;
-            if (num !== 'X') num = parseInt(num);
+            let startY = 0, isSwiping = false;
+            let num = btn.dataset.num; if(num!=='X') num = parseInt(num);
 
-            const handleStart = (y) => {
-                startY = y;
-                isSwiping = false;
+            const start = (y) => { startY = y; isSwiping = false; };
+            const move = (y, el) => {
+                if((y - startY) > 25) { isSwiping = true; el.classList.add('swiping'); }
+                else el.classList.remove('swiping');
             };
-
-            const handleMove = (y, el) => {
-                const deltaY = y - startY;
-                // 下滑超過 25px 視為填寫意圖
-                if (deltaY > 25) { 
-                    isSwiping = true;
-                    el.classList.add('swiping');
-                } else {
-                    el.classList.remove('swiping');
-                }
-            };
-
-            const handleEnd = (el) => {
+            const end = (el) => {
                 el.classList.remove('swiping');
-                if (isSwiping) {
-                    fillRealNumber(num); // 下滑 = 填寫
-                } else {
-                    toggleNote(num); // 點擊 = 筆記
-                }
+                if(isSwiping) fillRealNumber(num); else toggleNote(num);
             };
 
-            // Touch Events (手機)
-            btn.addEventListener('touchstart', (e) => {
-                e.preventDefault(); // 禁止瀏覽器原生滾動
-                handleStart(e.touches[0].clientY);
-            }, {passive: false});
-
-            btn.addEventListener('touchmove', (e) => {
-                e.preventDefault(); // 禁止瀏覽器原生滾動
-                handleMove(e.touches[0].clientY, btn);
-            }, {passive: false});
-
-            btn.addEventListener('touchend', (e) => {
-                handleEnd(btn);
-            });
-
-            // Mouse Events (電腦/測試)
-            btn.addEventListener('mousedown', (e) => {
-                handleStart(e.clientY);
-                const onMouseMove = (moveE) => handleMove(moveE.clientY, btn);
-                const onMouseUp = () => {
-                    document.removeEventListener('mousemove', onMouseMove);
-                    document.removeEventListener('mouseup', onMouseUp);
-                    handleEnd(btn);
-                };
-                document.addEventListener('mousemove', onMouseMove);
-                document.addEventListener('mouseup', onMouseUp);
+            btn.addEventListener('touchstart', e => { e.preventDefault(); start(e.touches[0].clientY); }, {passive:false});
+            btn.addEventListener('touchmove', e => { e.preventDefault(); move(e.touches[0].clientY, btn); }, {passive:false});
+            btn.addEventListener('touchend', e => end(btn));
+            btn.addEventListener('mousedown', e => {
+                start(e.clientY);
+                const mm = ev => move(ev.clientY, btn);
+                const mu = () => { document.removeEventListener('mousemove', mm); document.removeEventListener('mouseup', mu); end(btn); };
+                document.addEventListener('mousemove', mm); document.addEventListener('mouseup', mu);
             });
         });
 
-        // 1. 筆記邏輯
         function toggleNote(num) {
-            if (isGameOver || selectedCellIndex === null) return;
-            // 已有實數或固定題，不能寫筆記
-            if (board[selectedCellIndex] !== 0 || fixedMask[selectedCellIndex]) return;
-
-            if (num === 'X') {
-                notes[selectedCellIndex].clear(); // 清空筆記
-            } else {
-                const cellNotes = notes[selectedCellIndex];
-                if (cellNotes.has(num)) cellNotes.delete(num);
-                else cellNotes.add(num);
+            if (isGameOver || selectedCellIndex === null || board[selectedCellIndex] !== 0 || fixedMask[selectedCellIndex]) return;
+            if (num === 'X') notes[selectedCellIndex].clear();
+            else {
+                if (notes[selectedCellIndex].has(num)) notes[selectedCellIndex].delete(num);
+                else notes[selectedCellIndex].add(num);
             }
-            renderBoard();
-            selectCell(selectedCellIndex); // 保持高亮
+            renderBoard(); selectCell(selectedCellIndex); saveGame(true);
         }
 
-        // 2. 填寫邏輯 (含自動清理筆記)
         function fillRealNumber(num) {
             if (isGameOver || selectedCellIndex === null || fixedMask[selectedCellIndex]) return;
+            const cell = document.querySelectorAll('.cell')[selectedCellIndex];
             
-            const cellDivs = document.querySelectorAll('.cell');
-            const currentCell = cellDivs[selectedCellIndex];
-
-            // 清除 (X)
             if (num === 'X') {
-                board[selectedCellIndex] = 0;
-                renderBoard();
-                selectCell(selectedCellIndex);
-                return;
+                board[selectedCellIndex] = 0; renderBoard(); selectCell(selectedCellIndex); saveGame(true); return;
             }
 
-            // 錯誤檢查
             if (num !== solution[selectedCellIndex]) {
-                mistakes++;
-                updateMistakeUI();
-                currentCell.textContent = num;
-                currentCell.classList.add('error', 'shake-animation');
-                
-                // 延遲重繪 (把錯誤數字洗掉)
+                mistakes++; updateMistakeUI();
+                cell.textContent = num; cell.classList.add('error', 'shake-animation');
                 setTimeout(() => renderBoard(), 400);
-                
                 if (mistakes >= MAX_MISTAKES) triggerGameOver();
             } else {
-                // 正確填入
                 board[selectedCellIndex] = num;
-                notes[selectedCellIndex].clear(); // 清除該格筆記
-                
-                // 自動清理衝突筆記
+                notes[selectedCellIndex].clear();
                 cleanConflictingNotes(selectedCellIndex, num);
-
-                renderBoard();
-                selectCell(selectedCellIndex);
-                checkWin();
+                renderBoard(); selectCell(selectedCellIndex); checkWin();
             }
+            saveGame(true);
         }
 
         function cleanConflictingNotes(index, num) {
-            const row = Math.floor(index / 9);
-            const col = index % 9;
-            const startRow = Math.floor(row / 3) * 3;
-            const startCol = Math.floor(col / 3) * 3;
-
-            for (let i = 0; i < 81; i++) {
-                let r = Math.floor(i / 9);
-                let c = i % 9;
-                
-                // 檢查是否關聯 (同行、同列、同宮)
-                let isRelated = (r === row) || (c === col) || 
-                                (r >= startRow && r < startRow + 3 && c >= startCol && c < startCol + 3);
-                
-                if (isRelated && notes[i].has(num)) {
+            const r = Math.floor(index / 9), c = index % 9;
+            const sr = Math.floor(r / 3) * 3, sc = Math.floor(c / 3) * 3;
+            for(let i=0; i<81; i++) {
+                let tr = Math.floor(i / 9), tc = i % 9;
+                if ((tr === r || tc === c || (tr >= sr && tr < sr+3 && tc >= sc && tc < sc+3)) && notes[i].has(num)) {
                     notes[i].delete(num);
                 }
             }
         }
 
-        // --- 輔助功能 ---
         function updateMistakeUI() {
             const el = document.getElementById('mistake-display');
             el.innerText = `錯誤: ${mistakes}/${MAX_MISTAKES}`;
-            if (mistakes >= 2) el.classList.add('warning'); else el.classList.remove('warning');
+            if(mistakes>=2) el.classList.add('warning'); else el.classList.remove('warning');
         }
 
         function triggerGameOver() {
-            isGameOver = true;
-            clearInterval(timerInterval);
+            isGameOver = true; clearInterval(timerInterval);
             document.getElementById('game-over-overlay').style.display = 'flex';
-            document.getElementById('numpad').style.opacity = '0.3';
-            document.getElementById('numpad').style.pointerEvents = 'none';
         }
 
         function startTimer() {
             clearInterval(timerInterval);
-            seconds = 0;
-            document.getElementById('timer').innerText = "00:00";
-            timerInterval = setInterval(() => {
-                seconds++;
+            const update = () => {
                 let m = Math.floor(seconds / 60).toString().padStart(2, '0');
                 let s = (seconds % 60).toString().padStart(2, '0');
                 document.getElementById('timer').innerText = `${m}:${s}`;
-            }, 1000);
+            };
+            update();
+            timerInterval = setInterval(() => { seconds++; update(); }, 1000);
         }
 
         function checkWin() {
-            if (!board.includes(0) && board.every((val, i) => val === solution[i])) {
+            if (!board.includes(0) && board.every((v, i) => v === solution[i])) {
                 clearInterval(timerInterval);
-                setTimeout(() => alert(`恭喜完成！用時：${document.getElementById('timer').innerText}`), 100);
+                setTimeout(() => alert(`恭喜！用時：${document.getElementById('timer').innerText}`), 100);
             }
         }
 
@@ -675,29 +710,28 @@
             const input = prompt("輸入種子碼:");
             if (input) initGame(input);
         }
-        function copySeed() {
-            navigator.clipboard.writeText(currentSeed);
-            alert("種子碼已複製");
+        function copySeed() { navigator.clipboard.writeText(currentSeed); showToast("種子碼已複製"); }
+        function showToast(msg) {
+            const t = document.getElementById("toast"); t.innerText = msg; t.className = "show";
+            setTimeout(() => t.className="", 2000);
         }
 
-        // 鍵盤支援 (Shift=筆記)
-        document.addEventListener('keydown', (e) => {
+        document.addEventListener('keydown', e => {
             if (selectedCellIndex === null) return;
             const isNote = e.shiftKey;
             if (e.key >= '1' && e.key <= '9') {
-                const num = parseInt(e.key);
-                if (isNote) toggleNote(num); else fillRealNumber(num);
+                const n = parseInt(e.key);
+                if (isNote) toggleNote(n); else fillRealNumber(n);
             }
             if (e.key === 'Backspace' || e.key === 'Delete') fillRealNumber('X');
         });
 
         // 啟動
         initGame();
-
+        
+        // PWA
         if ('serviceWorker' in navigator) {
-            window.addEventListener('load', () => {
-                navigator.serviceWorker.register('./sw.js');
-            });
+            window.addEventListener('load', () => { navigator.serviceWorker.register('./sw.js'); });
         }
     </script>
 </body>
