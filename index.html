@@ -8,7 +8,8 @@
         :root {
             --bg-color: #f0f2f5;
             --board-bg: #fff;
-            --line-color: #344861;
+            --line-color: #344861;      /* 粗線 (深藍) */
+            --thin-border: #bdc3c7;     /* 細線 (加深一點的灰，顯示更清楚) */
             --highlight-color: #e2ebf3;
             --selected-color: #bbdefb;
             --same-num-color: #cbf0f8;
@@ -16,7 +17,6 @@
             --text-color: #344861;
             --filled-color: #0072e3;
             --fixed-color: #000;
-            --thin-border: #c6d2df; 
             --note-color: #7f8c8d;
             --menu-bg: #ffffff;
             --overlay-bg: rgba(0, 0, 0, 0.5);
@@ -29,23 +29,27 @@
             background-color: var(--bg-color);
             margin: 0;
             height: 100vh;
+            min-height: 100vh;
             display: flex;
             flex-direction: column;
-            overflow: hidden; /* 禁止整體捲動 */
+            overflow: hidden;
             user-select: none;
             -webkit-user-select: none;
             touch-action: none;
         }
+        @supports (height: 100dvh) {
+            body { height: 100dvh; min-height: 100dvh; }
+        }
 
-        /* --- 1. 頂部導航列 (Top Bar) --- */
+        /* --- 1. 頂部導航列 --- */
         .top-bar {
             height: 50px;
             width: 100%;
             background-color: #fff;
-            display: flex;
-            justify-content: space-between;
+            display: grid;
+            grid-template-columns: 50px 1fr 120px;
             align-items: center;
-            padding: 0 15px;
+            padding: 0 10px;
             box-shadow: 0 1px 3px rgba(0,0,0,0.1);
             z-index: 10;
         }
@@ -53,220 +57,112 @@
         .menu-btn {
             font-size: 24px;
             cursor: pointer;
-            background: none;
-            border: none;
+            background: none; border: none;
             color: var(--text-color);
+            justify-self: start;
             padding: 5px;
+        }
+
+        /* 難度標題 (可點選) */
+        .header-difficulty {
+            text-align: center;
+            font-size: 18px;
+            font-weight: bold;
+            color: var(--filled-color);
+            cursor: pointer; /* 手型游標 */
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 5px;
+            padding: 5px 10px;
+            border-radius: 15px;
+            transition: background 0.2s;
+        }
+        .header-difficulty:active {
+            background-color: #f0f7ff;
+        
         }
 
         .game-status {
             display: flex;
-            gap: 15px;
+            gap: 10px;
+            justify-content: flex-end;
             font-size: 16px;
             font-weight: bold;
             color: var(--text-color);
             font-variant-numeric: tabular-nums;
         }
-        
         .mistake-counter.warning { color: #e74c3c; }
 
-        /* --- 2. 遊戲主區域 (Board Area) --- */
+        /* --- 2. 遊戲主區域 (修正版) --- */
         .game-container {
-            flex: 1; /* 佔據剩餘空間 */
+            flex: 1;
             display: flex;
             justify-content: center;
             align-items: center;
             padding: 10px;
             width: 100%;
-            position: relative;
         }
 
         #sudoku-board {
             display: grid;
             grid-template-columns: repeat(9, 1fr);
-            /* 讓棋盤盡可能大，但留空間給鍵盤 */
             width: 100%;
-            max-width: 450px; 
-            /* 關鍵：動態計算最大高度，避免蓋到鍵盤 (100vh - header - numpad - margins) */
+            max-width: 450px;
             max-height: calc(100vh - 160px); 
             aspect-ratio: 1 / 1; 
-            
-            background-color: var(--board-bg);
-            gap: 0; 
+            background-color: var(--thin-border);
+            /* 外框：3px 實線 */
             border: 3px solid var(--line-color); 
             box-shadow: 0 4px 12px rgba(0,0,0,0.1);
             position: relative;
-            padding: 0; 
+            /* 使用 gap + 背景色畫細線，避免 Chrome 子像素消失 */
+            gap: 1px; 
         }
 
-        /* --- 3. 底部鍵盤區 (Numpad) --- */
-        .bottom-controls {
-            width: 100%;
-            background-color: var(--bg-color);
-            padding: 10px 10px 20px 10px; /* 底部留白適應 iPhone Home Bar */
-            display: flex;
-            flex-direction: column;
-            align-items: center;
-            z-index: 10;
-        }
-
-        .hint-text {
-            font-size: 12px;
-            color: #888;
-            margin-bottom: 8px;
-            text-align: center;
-        }
-
-        .numpad {
-            display: grid;
-            grid-template-columns: repeat(5, 1fr);
-            gap: 6px;
-            width: 100%;
-            max-width: 500px;
-        }
-
-        .num-btn {
-            background-color: white;
-            border: 1px solid #c6d2df;
-            border-radius: 8px;
-            height: 52px; /* 按鈕高度 */
-            font-size: 24px;
-            color: var(--filled-color);
-            display: flex;
-            justify-content: center;
-            align-items: center;
-            cursor: pointer;
-            box-shadow: 0 2px 0 #dce3eb;
-            transition: transform 0.1s;
-            position: relative;
-        }
-        
-        .num-btn.swiping {
-            background-color: var(--filled-color);
-            color: white;
-            transform: translateY(6px);
-            box-shadow: none;
-        }
-
-        /* --- 4. 側邊選單 (Side Menu) --- */
-        .side-menu-overlay {
-            position: fixed;
-            top: 0; left: 0;
-            width: 100%; height: 100%;
-            background-color: var(--overlay-bg);
-            z-index: 99;
-            opacity: 0;
-            visibility: hidden;
-            transition: opacity 0.3s;
-        }
-        .side-menu-overlay.active {
-            opacity: 1; visibility: visible;
-        }
-
-        .side-menu {
-            position: fixed;
-            top: 0; left: -280px; /* 預設隱藏 */
-            width: 280px;
-            height: 100%;
-            background-color: var(--menu-bg);
-            z-index: 100;
-            box-shadow: 2px 0 10px rgba(0,0,0,0.1);
-            transition: left 0.3s cubic-bezier(0.4, 0, 0.2, 1);
-            display: flex;
-            flex-direction: column;
-            padding: 20px;
-            overflow-y: auto;
-        }
-        .side-menu.active { left: 0; }
-
-        .menu-header {
-            font-size: 22px;
-            font-weight: bold;
-            margin-bottom: 20px;
-            color: var(--text-color);
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-        }
-        .close-menu-btn {
-            background: none; border: none; font-size: 24px; cursor: pointer; color: #888;
-        }
-
-        /* 選單內的區塊 */
-        .menu-section { margin-bottom: 25px; }
-        .menu-section h3 {
-            font-size: 14px; color: #888; margin-bottom: 10px; text-transform: uppercase; letter-spacing: 1px;
-        }
-        
-        /* 難度按鈕 (垂直排列) */
-        .menu-diff-options { display: flex; flex-direction: column; gap: 8px; }
-        .menu-diff-btn {
-            padding: 12px;
-            border: 1px solid #ddd;
-            border-radius: 8px;
-            background: #fff;
-            text-align: left;
-            font-size: 16px;
-            cursor: pointer;
-            display: flex;
-            justify-content: space-between;
-        }
-        .menu-diff-btn.active {
-            border-color: var(--filled-color);
-            background-color: #f0f7ff;
-            color: var(--filled-color);
-            font-weight: bold;
-        }
-        .menu-diff-btn.active::after { content: '✓'; }
-
-        /* 功能按鈕 */
-        .menu-actions { display: flex; flex-direction: column; gap: 10px; }
-        .menu-action-btn {
-            padding: 12px;
-            border: none;
-            border-radius: 8px;
-            font-size: 16px;
-            font-weight: bold;
-            cursor: pointer;
-            text-align: center;
-            background-color: #f0f2f5;
-            color: var(--text-color);
-            transition: background 0.2s;
-        }
-        .menu-action-btn:hover { background-color: #e4e6e9; }
-        
-        .btn-primary { background-color: var(--filled-color); color: white; }
-        .btn-primary:hover { background-color: #005bb5; }
-        .btn-save { color: #27ae60; background: #eafaf1; }
-        .btn-load { color: #e67e22; background: #fef5e7; }
-
-        .seed-info {
-            font-size: 13px; color: #888; text-align: center; margin-top: auto; padding-top: 20px;
-            cursor: pointer; text-decoration: underline;
-        }
-
-        /* --- 棋盤細節 (維持格線修復) --- */
+        /* --- 格線終極修復 (改用 gap 畫細線) --- */
         .cell {
             background-color: var(--board-bg);
             display: flex;
             justify-content: center;
             align-items: center;
-            font-size: 24px; /* 手機上字體 */
+            font-size: 24px;
             font-weight: 500;
             color: var(--fixed-color);
             cursor: pointer;
             position: relative;
-            box-sizing: border-box;
-            border: 1px solid var(--thin-border);
-            margin-right: -1px; margin-bottom: -1px;
-            z-index: 1; 
+            z-index: 1;
         }
-        .cell.border-right { border-right: 2px solid var(--line-color) !important; z-index: 5; }
-        .cell.border-bottom { border-bottom: 2px solid var(--line-color) !important; z-index: 5; }
-        .cell:nth-child(9n) { margin-right: 0; border-right: none; }
-        .cell:nth-child(n+73) { margin-bottom: 0; border-bottom: none; }
 
-        /* 筆記 */
+        /* --- 3x3 粗線：使用偽元素覆蓋細線 --- */
+        /* 垂直粗線 */
+        .cell.border-right::after {
+            content: '';
+            position: absolute;
+            top: 0; 
+            right: -1px; /* 稍微向右偏移以覆蓋原本的 1px 細線 */
+            width: 3px;  /* 設定為 3px 確保完全蓋住細線 */
+            height: 100%;
+            background-color: var(--line-color);
+            z-index: 5;
+            pointer-events: none; /* 讓點擊穿透，避免擋住操作 */
+        }
+
+        /* 水平粗線 */
+        .cell.border-bottom::before {
+            content: '';
+            position: absolute;
+            bottom: -1px; /* 稍微向下偏移以覆蓋原本的 1px 細線 */
+            left: 0;
+            width: 100%;
+            height: 3px; /* 設定為 3px */
+            background-color: var(--line-color);
+            z-index: 5;
+            pointer-events: none;
+        }
+
+
+        /* --- 筆記與狀態 --- */
         .note-grid {
             position: absolute; top: 0; left: 0; width: 100%; height: 100%;
             display: grid; grid-template-columns: repeat(3, 1fr); grid-template-rows: repeat(3, 1fr);
@@ -277,48 +173,66 @@
             font-size: 8px; color: var(--note-color); font-weight: normal;
         }
 
-        /* 狀態樣式 */
-        .cell.selected { background-color: var(--selected-color) !important; z-index: 2; }
+        .cell.selected { background-color: var(--selected-color) !important; }
         .cell.same-number { background-color: var(--same-num-color) !important; }
         .cell.highlight { background-color: var(--highlight-color); }
         .cell.error { background-color: var(--error-color) !important; color: #e74c3c !important; }
         .cell.fixed { font-weight: bold; }
         .cell.user-input { color: var(--filled-color); }
 
-        /* Game Over Overlay */
-        #game-over-overlay {
-            position: absolute; top: 0; left: 0; width: 100%; height: 100%;
-            background: rgba(255, 255, 255, 0.9);
-            display: none; flex-direction: column;
-            justify-content: center; align-items: center; z-index: 20;
+        /* --- 3. 底部鍵盤區 --- */
+        .bottom-controls {
+            width: 100%;
+            background-color: var(--bg-color);
+            padding: 10px 10px calc(20px + env(safe-area-inset-bottom)) 10px;
+            display: flex; flex-direction: column; align-items: center; z-index: 10;
         }
+        .hint-text { font-size: 12px; color: #888; margin-bottom: 8px; text-align: center; }
+        .numpad { display: grid; grid-template-columns: repeat(5, 1fr); gap: 6px; width: 100%; max-width: 500px; }
+        .num-btn {
+            background-color: white; border: 1px solid #c6d2df; border-radius: 8px; height: 52px;
+            font-size: 24px; color: var(--filled-color); display: flex; justify-content: center; align-items: center;
+            cursor: pointer; box-shadow: 0 2px 0 #dce3eb; transition: transform 0.1s; position: relative;
+        }
+        .num-btn.swiping { background-color: var(--filled-color); color: white; transform: translateY(6px); box-shadow: none; }
+
+        /* --- 4. 側邊選單 --- */
+        .side-menu-overlay {
+            position: fixed; top: 0; left: 0; width: 100%; height: 100%;
+            background-color: var(--overlay-bg); z-index: 99; opacity: 0; visibility: hidden; transition: opacity 0.3s;
+        }
+        .side-menu-overlay.active { opacity: 1; visibility: visible; }
+        .side-menu {
+            position: fixed; top: 0; left: -280px; width: 280px; height: 100%;
+            background-color: var(--menu-bg); z-index: 100; box-shadow: 2px 0 10px rgba(0,0,0,0.1);
+            transition: left 0.3s cubic-bezier(0.4, 0, 0.2, 1); display: flex; flex-direction: column; padding: 20px; overflow-y: auto;
+        }
+        .side-menu.active { left: 0; }
+        .menu-header { font-size: 22px; font-weight: bold; margin-bottom: 20px; color: var(--text-color); display: flex; justify-content: space-between; align-items: center; }
+        .close-menu-btn { background: none; border: none; font-size: 24px; cursor: pointer; color: #888; }
+        .menu-section { margin-bottom: 25px; }
+        .menu-section h3 { font-size: 14px; color: #888; margin-bottom: 10px; text-transform: uppercase; letter-spacing: 1px; }
+        .menu-diff-options { display: flex; flex-direction: column; gap: 8px; }
+        .menu-diff-btn { padding: 12px; border: 1px solid #ddd; border-radius: 8px; background: #fff; text-align: left; font-size: 16px; cursor: pointer; display: flex; justify-content: space-between; }
+        .menu-diff-btn.active { border-color: var(--filled-color); background-color: #f0f7ff; color: var(--filled-color); font-weight: bold; }
+        .menu-diff-btn.active::after { content: '✓'; }
+        .menu-actions { display: flex; flex-direction: column; gap: 10px; }
+        .menu-action-btn { padding: 12px; border: none; border-radius: 8px; font-size: 16px; font-weight: bold; cursor: pointer; text-align: center; background-color: #f0f2f5; color: var(--text-color); }
+        .btn-primary { background-color: var(--filled-color); color: white; }
+        .btn-save { color: #27ae60; background: #eafaf1; }
+        .btn-load { color: #e67e22; background: #fef5e7; }
+        .seed-info { font-size: 13px; color: #888; text-align: center; margin-top: auto; padding-top: 20px; cursor: pointer; text-decoration: underline; }
+
+        /* Game Over & Toast */
+        #game-over-overlay { position: absolute; top: 0; left: 0; width: 100%; height: 100%; background: rgba(255, 255, 255, 0.9); display: none; flex-direction: column; justify-content: center; align-items: center; z-index: 20; }
         #game-over-overlay h2 { margin: 0 0 10px 0; color: #e74c3c; }
-        #game-over-overlay button {
-            padding: 10px 20px; background: var(--filled-color);
-            color: white; border: none; border-radius: 5px; font-size: 16px;
-        }
-
-        /* Toast */
-        #toast {
-            visibility: hidden; min-width: 200px; background-color: #333; color: #fff; text-align: center;
-            border-radius: 20px; padding: 10px; position: fixed; z-index: 200; left: 50%; bottom: 80px; /* 避開鍵盤 */
-            transform: translateX(-50%); font-size: 14px; opacity: 0; transition: opacity 0.3s;
-        }
+        #game-over-overlay button { padding: 10px 20px; background: var(--filled-color); color: white; border: none; border-radius: 5px; font-size: 16px; }
+        #toast { visibility: hidden; min-width: 200px; background-color: #333; color: #fff; text-align: center; border-radius: 20px; padding: 10px; position: fixed; z-index: 200; left: 50%; bottom: 80px; transform: translateX(-50%); font-size: 14px; opacity: 0; transition: opacity 0.3s; }
         #toast.show { visibility: visible; opacity: 0.9; }
-
-        @keyframes shake {
-            0% { transform: translate(1px, 1px); } 20% { transform: translate(-3px, 0px); }
-            40% { transform: translate(3px, 0px); } 60% { transform: translate(-3px, 0px); }
-            100% { transform: translate(0, 0); }
-        }
+        @keyframes shake { 0% { transform: translate(1px, 1px); } 20% { transform: translate(-3px, 0px); } 40% { transform: translate(3px, 0px); } 60% { transform: translate(-3px, 0px); } 100% { transform: translate(0, 0); } }
         .shake-animation { animation: shake 0.4s; }
-
-        /* RWD 調整 */
-        @media (max-height: 600px) {
-            .cell { font-size: 18px; } /* 小螢幕字體縮小 */
-            .num-btn { height: 45px; }
-            .top-bar { height: 40px; }
-        }
+        @media (max-height: 600px) { .cell { font-size: 18px; } .num-btn { height: 45px; } .top-bar { height: 40px; } }
+        @media (max-width: 600px) { .game-container { flex: 0 0 auto; } }
     </style>
 <link rel="manifest" href="manifest.webmanifest">
 <meta name="theme-color" content="#ffffff">
@@ -328,6 +242,7 @@
 
     <div class="top-bar">
         <button class="menu-btn" onclick="toggleMenu()">☰</button>
+        <div class="header-difficulty" id="header-diff-display" onclick="toggleMenu()">普通</div>
         <div class="game-status">
             <span id="mistake-display" class="mistake-counter">0/3</span>
             <span id="timer">00:00</span>
@@ -345,7 +260,7 @@
     </div>
 
     <div class="bottom-controls">
-        <div class="hint-text">💡 點擊寫筆記，按住下滑填入實際數字</div>
+        <div class="hint-text">💡 點擊寫筆記，下滑填數字</div>
         <div class="numpad" id="numpad">
             <div class="num-btn" data-num="1">1</div>
             <div class="num-btn" data-num="2">2</div>
@@ -410,9 +325,9 @@
         let isGameOver = false;
         let currentDifficulty = 'medium';
         const DIFFICULTY_HOLES = { 'easy': 30, 'medium': 40, 'hard': 50, 'expert': 58 };
+        const DIFFICULTY_LABELS = { 'easy': '簡單', 'medium': '普通', 'hard': '困難', 'expert': '專家' };
         const SAVE_KEY = 'sudoku_save_v2';
 
-        // --- 選單控制 ---
         function toggleMenu() {
             document.getElementById('side-menu').classList.toggle('active');
             document.getElementById('menu-overlay').classList.toggle('active');
@@ -422,14 +337,12 @@
             document.getElementById('menu-overlay').classList.remove('active');
         }
 
-        // --- RNG ---
         function seedRandom(seed) { rngState = seed; }
         function myRandom() {
             rngState = (rngState * 9301 + 49297) % 233280;
             return rngState / 233280.0;
         }
 
-        // --- 初始化 ---
         function initGame(seedInput = null) {
             if(timerInterval) clearInterval(timerInterval);
             mistakes = 0; isGameOver = false; updateMistakeUI();
@@ -440,7 +353,8 @@
             
             seedRandom(currentSeed);
             document.getElementById('seed-label').innerText = `Seed: #${currentSeed} (複製)`;
-            
+            updateHeaderDifficulty();
+
             notes = Array.from({length: 81}, () => new Set());
             startTimer();
             generateBoard();
@@ -450,7 +364,6 @@
             saveGame(true);
         }
 
-        // --- 存檔系統 ---
         function saveGame(isAuto = false) {
             if (isGameOver) return;
             const saveData = {
@@ -473,6 +386,7 @@
                 currentDifficulty = data.currentDifficulty; currentSeed = data.currentSeed;
 
                 updateDifficultyUI(currentDifficulty);
+                updateHeaderDifficulty();
                 document.getElementById('seed-label').innerText = `Seed: #${currentSeed} (複製)`;
                 updateMistakeUI();
                 clearInterval(timerInterval);
@@ -486,11 +400,15 @@
         function manualSave() { saveGame(false); }
         function manualLoad() { if(confirm("確定讀取舊進度？")) loadGame(); }
 
-        // --- 遊戲邏輯 ---
         function setDifficulty(level) {
             currentDifficulty = level;
             updateDifficultyUI(level);
             initGame();
+        }
+
+        function updateHeaderDifficulty() {
+            const label = DIFFICULTY_LABELS[currentDifficulty] || '普通';
+            document.getElementById('header-diff-display').innerHTML = `${label} &nbsp;▼`;
         }
 
         function updateDifficultyUI(level) {
@@ -515,7 +433,6 @@
             board = [...solution];
             fixedMask = Array.from({ length: 81 }, () => true);
             let indices = Array.from({length: 81}, (_, i) => i);
-            // Fisher-Yates shuffle
             for (let i = indices.length - 1; i > 0; i--) {
                 const j = Math.floor(myRandom() * (i + 1));
                 [indices[i], indices[j]] = [indices[j], indices[i]];
@@ -532,7 +449,7 @@
             if (emptyIndex === -1) return true;
             let row = Math.floor(emptyIndex / 9), col = emptyIndex % 9;
             let nums = [1, 2, 3, 4, 5, 6, 7, 8, 9];
-            for (let i = nums.length - 1; i > 0; i--) { // Shuffle nums
+            for (let i = nums.length - 1; i > 0; i--) {
                 const j = Math.floor(myRandom() * (i + 1));
                 [nums[i], nums[j]] = [nums[j], nums[i]];
             }
@@ -557,7 +474,7 @@
             return true;
         }
 
-        // --- 渲染 ---
+        // --- 渲染 (Grid Line Fix) ---
         function renderBoard() {
             const container = document.getElementById('sudoku-board');
             const overlay = document.getElementById('game-over-overlay');
@@ -567,6 +484,8 @@
                 const cell = document.createElement('div');
                 cell.classList.add('cell');
                 const col = index % 9, row = Math.floor(index / 9);
+                
+                // 3x3 粗線：使用 JS 添加 class，CSS 使用偽元素渲染
                 if (col === 2 || col === 5) cell.classList.add('border-right');
                 if (row === 2 || row === 5) cell.classList.add('border-bottom');
 
@@ -728,8 +647,6 @@
 
         // 啟動
         initGame();
-        
-        // PWA
         if ('serviceWorker' in navigator) {
             window.addEventListener('load', () => { navigator.serviceWorker.register('./sw.js'); });
         }
